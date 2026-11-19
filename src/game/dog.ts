@@ -32,13 +32,17 @@ export class RoboDog {
   private readonly api: DogApi;
   private nextBite = 0;
   private lastX: number;
+  private lastY: number;
+  private actionUntil = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, api: DogApi) {
     this.scene = scene;
     this.api = api;
     this.lastX = x;
+    this.lastY = y;
     this.shadow = scene.add.ellipse(x, y + 1, 14, 4, 0x000000, 0.35);
-    this.sprite = scene.add.sprite(x, y, 'robodog', 0).setOrigin(0.5, 1);
+    // 32x34 frames at half scale; feet sit 2px above the frame bottom
+    this.sprite = scene.add.sprite(x, y, 'robodog', 0).setScale(0.5).setOrigin(0.5, 32 / 34).play('dog-idle');
   }
 
   update(time: number, deltaMs: number): void {
@@ -51,19 +55,24 @@ export class RoboDog {
     if (foe) {
       if (this.moveTo(foe.x, foe.y + 4, RUN, dt, 10) && time >= this.nextBite) {
         this.nextBite = time + BITE_EVERY;
-        this.api.bite(foe, BITE_DAMAGE);
-        this.scene.tweens.add({ targets: this.sprite, y: this.sprite.y - 3, duration: 70, yoyo: true });
+        this.sprite.setFlipX(foe.x < this.sprite.x);
+        this.act('dog-bite', 220, time);
+        // damage lands on the snap frame
+        this.scene.time.delayedCall(70, () => foe.alive && this.api.bite(foe, BITE_DAMAGE));
       }
     } else {
       const drop = this.nearest(this.api.drops(), hero, FETCH_RADIUS);
       if (drop) {
-        if (this.moveTo(drop.x, drop.y + 4, RUN, dt, 6)) drop.take();
+        if (this.moveTo(drop.x, drop.y + 4, RUN, dt, 6)) {
+          this.act('dog-fetch', 260, time);
+          drop.take();
+        }
       } else {
         const side = this.sprite.x <= hero.x ? -1 : 1;
         this.moveTo(hero.x + side * 18, hero.y + 4, WALK, dt, 6);
       }
     }
-    this.animate();
+    this.animate(time);
     this.shadow.setPosition(this.sprite.x, this.sprite.y + 1).setDepth(this.sprite.y - 2);
     this.sprite.setDepth(this.sprite.y);
   }
@@ -89,12 +98,20 @@ export class RoboDog {
     return best;
   }
 
-  private animate(): void {
+  private act(key: string, ms: number, time: number): void {
+    this.actionUntil = time + ms;
+    this.sprite.play(key, true);
+  }
+
+  private animate(time: number): void {
     const dx = this.sprite.x - this.lastX;
+    const dy = this.sprite.y - this.lastY;
     this.lastX = this.sprite.x;
+    this.lastY = this.sprite.y;
+    if (time < this.actionUntil) return;
+    const moving = Math.abs(dx) + Math.abs(dy) > 0.1;
     if (Math.abs(dx) > 0.05) this.sprite.setFlipX(dx < 0);
-    const moving = Math.abs(dx) > 0.05 || this.sprite.anims.isPlaying;
-    if (moving && Math.abs(dx) > 0.05) this.sprite.play('dog-run', true);
-    else this.sprite.stop();
+    const key = moving ? 'dog-run' : 'dog-idle';
+    if (this.sprite.anims.currentAnim?.key !== key) this.sprite.play(key, true);
   }
 }

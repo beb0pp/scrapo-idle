@@ -75,7 +75,7 @@
   align-items: flex-end;
   justify-content: center;
   width: 140px;
-  min-height: 150px;
+  min-height: 168px;
   border-radius: 70px 70px 14px 14px;
   border: 2px solid var(--line-brown);
   background:
@@ -86,8 +86,8 @@
 }
 
 #panel .mochila .mo-hero {
-  width: 96px;
-  height: 128px;
+  width: 128px;
+  height: 144px;
   image-rendering: pixelated;
   filter: drop-shadow(0 1px 0 rgba(40, 25, 10, 0.35));
 }
@@ -350,5 +350,5 @@
 @media (max-width: 700px) {
   #panel .mochila .mo-doll { grid-template-columns: 66px 120px 66px; }
   #panel .mochila .mo-stage { width: 120px; min-height: 132px; }
-  #panel .mochila .mo-hero { width: 72px; height: 96px; }
+  #panel .mochila .mo-hero { width: 64px; height: 72px; }
 }

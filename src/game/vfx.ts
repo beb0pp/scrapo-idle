@@ -76,7 +76,10 @@ function bolt(g: Phaser.GameObjects.Graphics, a: Pt, b: Pt, width: number): void
 
 /** Squash-and-stretch on the caster so a cast reads in the body, not only in the effect. */
 export function castPose(scene: Phaser.Scene, hero: Phaser.GameObjects.Sprite): void {
-  scene.tweens.add({ targets: hero, scaleX: 1.15, scaleY: 0.88, duration: 70, yoyo: true, ease: 'Quad.easeOut' });
+  const sx = (hero.getData('baseScale') as number | undefined) ?? 1, sy = sx;
+  scene.tweens.killTweensOf(hero);
+  hero.setScale(sx, sy);
+  scene.tweens.add({ targets: hero, scaleX: sx * 1.1, scaleY: sy * 0.92, duration: 70, yoyo: true, ease: 'Quad.easeOut' });
 }
 
 /** Wrench swing: a thick crescent in front of the hero with a spark at the tip. */
@@ -133,12 +136,15 @@ export function dash(scene: Phaser.Scene, hero: Phaser.GameObjects.Sprite, dir: 
   const feet = () => ({ x: hero.x, y: hero.y + 9 });
   puffs(scene, feet(), 5, 0xd8e4e6);
   flash(scene, { x: hero.x - d.x * 6, y: hero.y - d.y * 6 }, 0.45, CYAN, 180);
-  scene.tweens.add({ targets: hero, scaleX: 1 + Math.abs(d.x) * 0.25, scaleY: 1 + Math.abs(d.y) * 0.25 - Math.abs(d.x) * 0.1, duration: ms / 2, yoyo: true });
+  const sx = (hero.getData('baseScale') as number | undefined) ?? 1, sy = sx;
+  scene.tweens.killTweensOf(hero);
+  hero.setScale(sx, sy);
+  scene.tweens.add({ targets: hero, scaleX: sx * (1 + Math.abs(d.x) * 0.2), scaleY: sy * (1 + Math.abs(d.y) * 0.2 - Math.abs(d.x) * 0.08), duration: ms / 2, yoyo: true });
   const steps = 5;
   for (let i = 0; i < steps; i++) {
     scene.time.delayedCall((i * ms) / steps, () => {
-      const ghost = scene.add.image(hero.x, hero.y, 'hero', hero.frame.name).setFlipX(hero.flipX).setTintFill(i % 2 ? CYAN : PALE).setAlpha(0.55).setDepth(hero.depth - 1);
-      vanish(scene, ghost, 180, { scaleX: 0.9, scaleY: 1.05 });
+      const ghost = scene.add.image(hero.x, hero.y, 'hero', hero.frame.name).setOrigin(hero.originX, hero.originY).setScale(sx, sy).setFlipX(hero.flipX).setTintFill(i % 2 ? CYAN : PALE).setAlpha(0.55).setDepth(hero.depth - 1);
+      vanish(scene, ghost, 180, { scaleX: sx * 0.9, scaleY: sy * 1.05 });
       for (let k = -1; k <= 1; k++) {
         const ox = -d.y * k * 6, oy = d.x * k * 6;
         const streak = scene.add.rectangle(hero.x + ox - d.x * 10, hero.y + oy - d.y * 10, 12 + Math.random() * 8, 1, CYAN).setRotation(Math.atan2(d.y, d.x)).setDepth(FX).setBlendMode(Phaser.BlendModes.ADD);
