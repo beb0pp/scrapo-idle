@@ -64,6 +64,12 @@ test('região bloqueada recusa a viagem com um aviso', async ({ page }) => {
   expect(await page.evaluate(() => (window as any).__scrapo.game.scene.isActive('World'))).toBe(false);
 });
 
+test('área acima do nível recusa a viagem mesmo com a região aberta', async ({ page }) => {
+  await seedSave(page, { xp: 0 });
+  expect(await travel(page, 'corrego_ferro_velho')).toBe(false);
+  await expect(page.locator('#toasts .toast.warn', { hasText: 'Ferro-Velho do Córrego exige Nv 2.' })).toBeVisible();
+});
+
 test('Nv 25: inimigos de outra região chegam escalados e com o nível à vista', async ({ page }) => {
   // 100 000 XP is Nv 46: Docas Alagadas (Nv 25) open, Cinturão Magnético (Nv 50) still closed
   await seedSave(page, { xp: 100_000 });

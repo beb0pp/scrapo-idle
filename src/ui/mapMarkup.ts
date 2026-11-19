@@ -61,9 +61,16 @@ export function tipCard(area: HuntArea, heroLevel: number): string {
     + (above ? `<p class="mapw-warn">${LOCK} Acima do seu nível</p>` : '');
 }
 
+/** Travel button; an area above the hero's level shows its gate and stays disabled. */
+function goButton(area: HuntArea, heroLevel: number, cls: string): string {
+  if (area.level > heroLevel) {
+    return `<button class="${cls}" data-fk="go:${area.id}" disabled title="Suba ao Nv ${area.level} para viajar">${LOCK} Exige Nv ${area.level}</button>`;
+  }
+  return `<button class="${cls}" data-travel="${area.id}" data-fk="go:${area.id}" aria-label="Viajar para ${esc(area.name)}">Viajar</button>`;
+}
+
 export function detailCard(area: HuntArea, heroLevel: number): string {
-  return `<div class="mapw-card-body">${tipCard(area, heroLevel)}</div>`
-    + `<button class="primary mapw-go" data-travel="${area.id}" data-fk="go:${area.id}">Viajar</button>`;
+  return `<div class="mapw-card-body">${tipCard(area, heroLevel)}</div>` + goButton(area, heroLevel, 'primary mapw-go');
 }
 
 const COLUMNS: [SortKey, string][] = [['name', 'Área'], ['level', 'Nv'], ['enemies', 'Inimigos'], ['size', 'Tamanho']];
@@ -79,7 +86,7 @@ export function listTable(areas: readonly HuntArea[], heroLevel: number, sort: {
     const enemies = a.enemies.map((k) => `<span class="mapw-ecell" title="${esc(ENEMY_INFO[k].name)}">${enemyIcon(k)}${elementChip(ENEMY_INFO[k].element)}</span>`).join('');
     return `<tr class="${above ? 'is-above' : ''}" data-row="${a.id}"><td class="mapw-col-name">${esc(a.name)}</td><td class="mapw-col-level">${above ? LOCK : ''}${a.level}</td>`
       + `<td class="mapw-col-enemies">${enemies}</td><td class="mapw-col-size">${SIZE_LABEL[a.size]}</td>`
-      + `<td><button class="mapw-go" data-travel="${a.id}" data-fk="go:${a.id}" aria-label="Viajar para ${esc(a.name)}">Viajar</button></td></tr>`;
+      + `<td>${goButton(a, heroLevel, 'mapw-go')}</td></tr>`;
   }).join('');
   return `<table class="mapw-table"><thead><tr>${head}<th><span class="mapw-sr">Ação</span></th></tr></thead><tbody>${rows}</tbody></table>`
     + (areas.length ? '' : '<p class="mapw-empty">Nenhuma área com esses filtros.</p>');
