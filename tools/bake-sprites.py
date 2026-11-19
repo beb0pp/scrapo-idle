@@ -11,8 +11,11 @@ SRC = ROOT / 'assets-src' / 'sprites'
 OUT = ROOT / 'public' / 'sprites'
 
 HERO_FRAME = (64, 72)
-HERO_AT = (11, 6)  # where the base art sits inside a frame
-WRENCH_PIVOT = (35 + HERO_AT[0], 36 + HERO_AT[1])
+# base art (assets-src/sprites/hero_base.png, 49x66 from tools/adultify-hero.py) sits feet-down at frame row 70
+HERO_AT = (11, 4)
+HAND = (36, 27)  # where the hand grips the wrench in the base art
+LEG_Y = 48  # first row of the legs in the base art
+WRENCH_PIVOT = (HAND[0] + HERO_AT[0], HAND[1] + HERO_AT[1])
 
 DOG_FRAME = (32, 34)
 DOG_AT = (1, 2)
@@ -76,14 +79,14 @@ def hero_frames() -> list[Image.Image]:
 
 
 def build_hero(base: Image.Image, wrench_side: str = 'right') -> list[Image.Image]:
-    in_wrench = (lambda x, y: x >= 34 and y <= 43) if wrench_side == 'right' else (lambda x, y: x <= 14 and y <= 43)
+    in_wrench = (lambda x, y: x >= 34 and y <= 40) if wrench_side == 'right' else (lambda x, y: x <= 14 and y <= 40)
     wrench = region(base, in_wrench)
-    upper = region(base, lambda x, y: y < 50 and not in_wrench(x, y))
+    upper = region(base, lambda x, y: y < LEG_Y and not in_wrench(x, y))
     mid = 21 if wrench_side == 'right' else 28
-    leg_l = region(base, lambda x, y: y >= 50 and x < mid)
-    leg_r = region(base, lambda x, y: y >= 50 and x >= mid)
+    leg_l = region(base, lambda x, y: y >= LEG_Y and x < mid)
+    leg_r = region(base, lambda x, y: y >= LEG_Y and x >= mid)
     W, U, L, R = (place(p, HERO_FRAME, HERO_AT) for p in (wrench, upper, leg_l, leg_r))
-    pv = WRENCH_PIVOT if wrench_side == 'right' else (49 - 1 - 35 + HERO_AT[0], 36 + HERO_AT[1])
+    pv = WRENCH_PIVOT if wrench_side == 'right' else (49 - 1 - HAND[0] + HERO_AT[0], HAND[1] + HERO_AT[1])
 
     def pose(up=(0, 0), wr=(0, 0, 0), ll=(0, 0), lr=(0, 0)) -> Image.Image:
         return compose(HERO_FRAME, [

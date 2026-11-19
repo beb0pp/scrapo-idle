@@ -28,6 +28,7 @@ O E2E usa o Chrome instalado (`channel: 'chrome'`), cada teste tem `localStorage
 | Ambiente | Pedras com musgo, troncos, cogumelos, flores, cercas vivas, pisos refeitos, barra de vida com medalhão (entregue antes do alpha, na base). | `f024651` |
 | Ícones | 21 ícones de itens redesenhados no estilo da referência 08; contador de créditos pulsa ao vender. | registro final |
 | Auto (2ª rodada) | Castigo para inimigos inalcançáveis; sai de mapa esgotado. | registro final |
+| Herói adulto | Pedido do usuário (visual infantil): `tools/adultify-hero.py` refaz a base a partir da mesma referência com cabeça ~25% menor, corpo mais longo, olhos pequenos e escuros e paleta dessaturada/envelhecida; mesma folha de 20 quadros. | registro final |
 | Vista de costas | Quadros 15–19 do herói gerados da arte frontal; `hero-idle-up`/`hero-walk-up` ao andar para cima. | registro final |
 | Docs | README documenta T, Auto e Ferrugem; este arquivo. | `bbdd8a3` e registro final |
 
@@ -46,9 +47,9 @@ Resultado: nenhum asset de terceiros entrou; toda a arte vem das referências do
 
 ## Capturas
 
-| Antes (herói pintado em código, 24×32) | Depois: quadros assados (herói 15, Ferrugem 9) | Depois: no jogo, zoom 2 |
-|---|---|---|
-| ![antes](alpha/hero-antes.png) | ![quadros](alpha/hero-ferrugem-quadros.png) | ![no jogo](alpha/hero-no-jogo.png) |
+| Antes (herói pintado em código, 24×32) | 1ª conversão (quadros herói 15, Ferrugem 9) | 1ª conversão no jogo, zoom 2 | Versão adulta final (repouso, caminhada, ataque, coleta, dano, esquiva, habilidade, costas) |
+|---|---|---|---|
+| ![antes](alpha/hero-antes.png) | ![quadros](alpha/hero-ferrugem-quadros.png) | ![no jogo](alpha/hero-no-jogo.png) | ![adulto](alpha/hero-adulto-quadros.png) |
 
 Sequência de animação conferida por amostragem dos quadros em execução: `hero-attack 6→7→8`, `hero-cast 13→14`, `hero-dash 12`, de volta a `hero-idle 0`; escala restaurada a 0,5 depois das animações.
 
@@ -73,15 +74,17 @@ Rodada final (`SCRAPO_AUTO_SOAK=1 npx playwright test e2e/auto.spec.ts`, 3 passa
 
 | Sessão | Mapas | Itens | Abates | Esquivas | Habilidades (Pulso/Arco/Investida/Sobrecarga) | Recuos | Destravas | Vida mín. | Mortes | Travas | Erros de console |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| s1 ferro-velho, sem drone | yard | 382 | 7 | 24 | 0 / 10 / 24 / 0 | 0 | 3 | 86 | 0 | 0 | 0 |
-| s2 masmorra, sem drone | dungeon → yard | 390 | 14 | 19 | 4 / 16 / 20 / 0 | 0 | 0 | 12 | 0 | 0 | 0 |
-| s3 masmorra, com drone | dungeon → yard | 446 | 14 | 13 | 2 / 14 / 14 / 4 | 4 | 1 | 1 | 0 | 0 | 0 |
+| s1 ferro-velho, sem drone | yard | 409 | 6 | 9 | 0 / 6 / 9 / 0 | 0 | 1 | 65 | 0 | 0 | 0 |
+| s2 masmorra, sem drone | dungeon → yard | 344 | 28 | 22 | 11 / 28 / 34 / 0 | 27 | 0 | 7 | 0 | 0 | 0 |
+| s3 masmorra, com drone | dungeon → yard | 456 | 13 | 13 | 1 / 16 / 14 / 5 | 0 | 0 | 35 | 0 | 0 | 0 |
 
-Rodada anterior: s3 teve 2 travas (masmorra esgotada sem plano B e perseguição de alvo inalcançável). Correção: inimigos inalcançáveis ficam 15 s de castigo, e sem trabalho no mapa o Auto segue para o outro mapa. A vida mínima de 1 e 12 mostra que o risco de morrer continua real.
+Essa é a 3ª rodada, sobre a árvore de `0112ba2` (lógica de jogo final; a troca seguinte do herói adulto só muda arte, com a mesma geometria de quadro, e foi revalidada pelos E2E). A 2ª rodada, logo após a correção, também deu 3/3 sem travas (382/390/446 itens, vida mínima 86/12/1).
+
+Rodada anterior: s3 teve 2 travas (masmorra esgotada sem plano B e perseguição de alvo inalcançável). Correção: inimigos inalcançáveis ficam 15 s de castigo, e sem trabalho no mapa o Auto segue para o outro mapa. A vida mínima de 7 (e 1 na 2ª rodada) mostra que o risco de morrer continua real.
 
 ## Pendências
 
-1. **Estilo do herói**: o usuário achou o visual infantil para o ambiente. Caminho combinado: nova referência com proporção adulta e paleta envelhecida (prompt no histórico); a conversão é automática pelos dois scripts acima.
+1. **Estilo do herói**: versão adulta aplicada (ver tabela). Se o usuário gerar uma nova referência, basta trocar o arquivo e rodar `python tools/adultify-hero.py <ref>` (ou `pixelize-ref.py` para manter proporções) seguido de `python tools/bake-sprites.py`.
 2. Herói tem vista frontal (espelhada para os lados) e vista de costas derivada da frontal (rosto vira nuca, chave troca de lado: quadros 15–19, usados ao andar para cima). Perfil verdadeiro depende de uma folha de animação gerada com o mesmo personagem.
 3. A extração AFK conta ciclos só com a aba aberta; ao fechar, guarda os ciclos concluídos (decisão de design original, coberta pelo E2E).
 4. Inimigos novos são pequenos no zoom 2; avaliar escala depois de o usuário jogar.
