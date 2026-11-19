@@ -2,7 +2,7 @@ import { ALLIES, SPELLS, TRANSMUTES, type AllyId, type FormationSlot, type Membe
 import { ITEMS } from '../data/items';
 import type { Result } from './economy';
 import { alchemyUnlocked, ferroMods, owns, unlockedSpells } from './progression';
-import { addItems, removeItems, type GameState } from './state';
+import { addItems, hasItems, removeItems, type GameState } from './state';
 
 const ok = (msg: string): Result => ({ ok: true, msg });
 const fail = (msg: string): Result => ({ ok: false, msg });
@@ -14,9 +14,11 @@ export function spellCooldownMs(state: GameState, id: SpellId): number {
   return Math.round(SPELLS[id].cooldownMs * ferroMods(state).spellCooldownMul);
 }
 
-export function spellPower(state: GameState, id: SpellId): number {
+export const EMPOWER_MUL = 1.5;
+
+export function spellPower(state: GameState, id: SpellId, empowered = false): number {
   const mods = ferroMods(state);
-  const base = SPELLS[id].power * mods.spellPowerMul;
+  const base = SPELLS[id].power * mods.spellPowerMul * (empowered ? EMPOWER_MUL : 1);
   return Math.round(id === 'spell_ward' ? base * mods.wardMul : base);
 }
 
@@ -32,24 +34,32 @@ export function equipSpell(state: GameState, slot: number, id: SpellId | null): 
   return ok(id ? `${SPELLS[id].name} pronto no atalho ${'ZXC'[slot]}.` : 'Atalho livre.');
 }
 
-/** Same gate for manual and Auto: learned, equipped, off cooldown and affordable. */
-export function castProblem(state: GameState, cds: SpellCooldowns, id: SpellId, now: number): string | null {
+export interface ManaHolder { value: number }
+export type CastResult = { ok: true; msg: string; empowered: boolean } | { ok: false; msg: string };
+
+/** Reforço: the spell's reagent is in stock, so it is consumed for +50% power. */
+export function canEmpower(state: GameState, id: SpellId): boolean {
+  return hasItems(state, SPELLS[id].cost);
+}
+
+/** Same gate for manual and Auto: learned, equipped, off cooldown and enough mana. */
+export function castProblem(state: GameState, cds: SpellCooldowns, id: SpellId, now: number, mana: ManaHolder): string | null {
   const spell = SPELLS[id];
   if (!unlockedSpells(state).includes(id)) return 'Feitiço ainda não aprendido.';
   if (!state.ferro.loadout.includes(id)) return 'Equipe o feitiço num atalho (Z X C).';
   if ((cds[id] ?? 0) > now) return `${spell.name} recarregando.`;
-  const lack = Object.entries(spell.cost).find(([item, qty]) => (state.inventory[item as keyof typeof state.inventory] ?? 0) < (qty ?? 0));
-  if (lack) return `Falta ${ITEMS[lack[0] as keyof typeof ITEMS].name}.`;
+  if (mana.value < spell.mana) return 'Mana insuficiente.';
   return null;
 }
 
-/** Pays the cost once and starts the cooldown. The scene applies the effect only when this succeeds. */
-export function castSpell(state: GameState, cds: SpellCooldowns, id: SpellId, now: number): Result {
-  const problem = castProblem(state, cds, id, now);
-  if (problem) return fail(problem);
-  removeItems(state, SPELLS[id].cost);
+/** Pays mana (and the reagent when in stock) once and starts the cooldown. The scene applies the effect only when this succeeds. */
+export function castSpell(state: GameState, cds: SpellCooldowns, id: SpellId, now: number, mana: ManaHolder): CastResult {
+  const problem = castProblem(state, cds, id, now, mana);
+  if (problem) return { ok: false, msg: problem };
+  mana.value -= SPELLS[id].mana;
+  const empowered = removeItems(state, SPELLS[id].cost);
   cds[id] = now + spellCooldownMs(state, id);
-  return ok(SPELLS[id].name);
+  return { ok: true, msg: SPELLS[id].name, empowered };
 }
 
 export function transmute(state: GameState, id: TransmuteId): Result {

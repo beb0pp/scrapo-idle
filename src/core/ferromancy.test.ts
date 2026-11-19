@@ -123,9 +123,10 @@ describe('alchemy and spells', () => {
     const s = rich();
     expect(equipSpell(s, 0, 'spell_ember').ok).toBe(false);
     const m = mage();
-    expect(castProblem(m, {}, 'spell_ember', 0)).toMatch(/Equipe/);
+    expect(castProblem(m, {}, 'spell_ember', 0, { value: 100 })).toMatch(/Equipe/);
     expect(equipSpell(m, 0, 'spell_ember').ok).toBe(true);
-    expect(castProblem(m, {}, 'spell_ember', 0)).toMatch(/Falta/);
+    expect(castProblem(m, {}, 'spell_ember', 0, { value: 0 })).toBe('Mana insuficiente.');
+    expect(castProblem(m, {}, 'spell_ember', 0, { value: 100 })).toBeNull();
   });
 
   it('pays the cost once, then blocks during the cooldown', () => {
@@ -133,12 +134,16 @@ describe('alchemy and spells', () => {
     equipSpell(s, 0, 'spell_ember');
     addItems(s, { reagent_ember: 2 });
     const cds: SpellCooldowns = {};
-    expect(castSpell(s, cds, 'spell_ember', 1000).ok).toBe(true);
+    const mana = { value: 100 };
+    expect(castSpell(s, cds, 'spell_ember', 1000, mana).ok).toBe(true);
     expect(countOf(s, 'reagent_ember')).toBe(1);
-    expect(castSpell(s, cds, 'spell_ember', 1000 + 5999).ok).toBe(false);
+    expect(mana.value).toBe(88);
+    expect(castSpell(s, cds, 'spell_ember', 1000 + 5999, mana).ok).toBe(false);
     expect(countOf(s, 'reagent_ember')).toBe(1);
-    expect(castSpell(s, cds, 'spell_ember', 1000 + 6000).ok).toBe(true);
+    expect(mana.value).toBe(88);
+    expect(castSpell(s, cds, 'spell_ember', 1000 + 6000, mana).ok).toBe(true);
     expect(countOf(s, 'reagent_ember')).toBe(0);
+    expect(mana.value).toBe(76);
   });
 
   it('moves a spell between hotkeys instead of duplicating it', () => {

@@ -6,9 +6,9 @@ export const BASE_DRONE_CAPACITY = 10;
 export const PULSE_RADIUS = 72;
 export const ARC_JUMPS = 3;
 
-export interface PlayerStats { combate: number; extracao: number; defesa: number; vida: number; sorte: number }
+export interface PlayerStats { combate: number; extracao: number; defesa: number; vida: number; sorte: number; mana: number }
 export function playerStats(s: GameState): PlayerStats {
-  const total: PlayerStats = { combate: 0, extracao: 0, defesa: 0, vida: 100, sorte: 0 };
+  const total: PlayerStats = { combate: 0, extracao: 0, defesa: 0, vida: 100, sorte: 0, mana: 0 };
   for (const id of Object.values(s.equipped).filter((id): id is ItemId => id !== null)) {
     for (const [key, value] of Object.entries(ITEMS[id].stats ?? {})) total[key as keyof PlayerStats] += value ?? 0;
   }
