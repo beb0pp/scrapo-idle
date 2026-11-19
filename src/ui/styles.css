@@ -267,8 +267,10 @@ button.primary { background: #6d4a12; border-color: var(--amber); }
 /* Extraction */
 #extraction { position: absolute; top: 12px; right: 12px; width: min(320px, calc(100vw - 24px)); background: rgba(42, 39, 51, 0.95); border: 3px solid var(--ink); box-shadow: 0 0 0 2px var(--line); padding: 10px 12px; }
 
-/* Docked inventory and merchant windows */
-#panel:has(.inventory-dock) {
+/* Movable windows (Mochila, Ferromancia, Oficina): docked right (default), docked left, or floating (dragged by the header). */
+#panel { z-index: 15; }
+#panel .panel-body { container-type: inline-size; }
+#panel[data-dock] {
   top: 58px;
   right: 12px;
   left: auto;
@@ -277,16 +279,21 @@ button.primary { background: #6d4a12; border-color: var(--amber); }
   max-height: none;
   transform: none;
 }
-
-/* Mochila placement: docked right (default), docked left, or floating (dragged by the header). */
-#panel { z-index: 15; }
+#panel[data-dock][data-dock-kind='ferro'],
+#panel[data-dock][data-dock-kind='workshop'] { width: min(460px, calc(100vw - 24px)); }
+#panel[data-dock] .panel-body { flex: 1; min-height: 0; }
 #panel[data-dock='left'] { left: 12px; right: auto; }
 #panel[data-dock='free'] { right: auto; height: min(calc(100vh - 128px), 760px); }
 #panel[data-dock] .panel-head { cursor: grab; user-select: none; touch-action: none; }
 #panel[data-dock] .panel-head:active { cursor: grabbing; }
 .dock-btn { font-size: 12px; padding: 2px 8px; }
-body[data-inv-dock='right'] #world-side { opacity: 0; pointer-events: none; }
-body[data-inv-dock='left'] #objective { opacity: 0; }
+body[data-panel-dock='right'] #world-side { opacity: 0; pointer-events: none; }
+body[data-panel-dock='left'] #objective { opacity: 0; }
+@container (max-width: 640px) {
+  .recipes { grid-template-columns: minmax(0, 1fr); }
+  .drone-box { flex-wrap: wrap; }
+  .drone-box .acts { width: 100%; justify-content: flex-start; }
+}
 #world-side, #objective { transition: opacity 0.15s; }
 
 #panel:has(.inventory-dock) .panel-body {
