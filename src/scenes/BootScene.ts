@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
+import { buildFerroArt } from '../art/ferroArt';
 import { buildEnemyArt } from '../art/enemyArt';
 import { buildSprites } from '../art/sprites';
+import { initFerroHud } from '../ui/ferroHud';
 import { initHud, initPanels } from '../ui/ui';
 
 export class BootScene extends Phaser.Scene {
@@ -19,8 +21,10 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     buildSprites(this);
+    buildFerroArt(this);
     buildEnemyArt(this);
     initHud();
+    initFerroHud();
     initPanels();
     this.scene.start('Title');
   }

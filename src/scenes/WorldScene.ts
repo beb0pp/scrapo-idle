@@ -9,6 +9,7 @@ import { Crane, Enemy, type EnemyKind, type Target } from '../game/enemies';
 import { findPath, nearestFree, simplify } from '../game/pathfind';
 import * as vfx from '../game/vfx';
 import { RoboDog } from '../game/dog';
+import { FerroController, ferroApi } from '../game/ferroController';
 import { PILE_RESPAWN_MS, session } from '../session';
 import { closePanel, hudFrame, modal, onSkillClick, openPanel, panelOpen, showHud, toast } from '../ui/ui';
 import { showAreaBanner } from '../ui/banner';
@@ -112,6 +113,7 @@ export class WorldScene extends Phaser.Scene {
   private relicDrop: ItemBag = {};
   private drone: Phaser.GameObjects.Sprite | null = null;
   private dog!: RoboDog;
+  ferro!: FerroController;
   private droneAura: Phaser.GameObjects.Arc | null = null;
   private droneNext = 0;
   private facing = new Phaser.Math.Vector2(0, 1);
@@ -221,7 +223,7 @@ export class WorldScene extends Phaser.Scene {
     this.spawnDrone();
     this.dog = new RoboDog(this, sp.x - 16, sp.y, {
       hero: () => ({ x: this.feetX, y: this.feetY }),
-      enemies: () => this.enemies,
+      enemies: () => (this.ferro?.dogFights() ?? true ? this.enemies : []),
       drops: () =>
         this.pickups.map((p) => ({
           x: p.sprite.x,
@@ -234,6 +236,7 @@ export class WorldScene extends Phaser.Scene {
         })),
       bite: (target, dmg) => this.damageEnemy(target as Enemy, dmg),
     });
+    this.ferro = new FerroController(ferroApi(this));
 
     this.fx = this.add.graphics().setDepth(6000);
     this.addLighting(map, objLayer);
@@ -481,6 +484,7 @@ export class WorldScene extends Phaser.Scene {
     this.crane?.update(time);
     this.updateDrone(time);
     this.dog.update(time, this.game.loop.delta);
+    this.ferro.update(time, this.game.loop.delta);
     this.updatePickups(time);
     this.updateSearch(time);
     this.updateRelic();
@@ -723,6 +727,7 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
     this.modalSince = 0;
+    this.ferro.autoCast(time);
     const fx = this.feetX, fy = this.feetY;
     const dist = (x: number, y: number) => Phaser.Math.Distance.Between(fx, fy, x, y);
     const near = (r: number) => this.enemies.filter((e) => e.alive && dist(e.x, e.y) < r);
@@ -889,7 +894,7 @@ export class WorldScene extends Phaser.Scene {
   private hurt(dmg: number, fx: number, fy: number): void {
     const now = this.time.now;
     if (now < this.invulnUntil || this.transitioning) return;
-    session.hp = Math.max(0, session.hp - Math.max(1, dmg - playerStats(session.state).defesa));
+    session.hp = Math.max(0, session.hp - this.ferro.absorb(Math.max(1, dmg - playerStats(session.state).defesa)));
     this.lastHurt = now;
     this.invulnUntil = now + 600;
     const away = new Phaser.Math.Vector2(this.player.x - fx, this.player.y - fy).normalize().scale(150);
@@ -1063,7 +1068,7 @@ export class WorldScene extends Phaser.Scene {
   dash(toward?: Phaser.Math.Vector2): void {
     const time = this.time.now;
     if (time < this.ready.dash || this.frozen) return;
-    this.ready.dash = time + COOLDOWN.dash;
+    this.ready.dash = time + COOLDOWN.dash * this.ferro.mods.dashCooldownMul;
     if (session.autoMode) session.autoLog.skills.dash++;
     const k = this.keys;
     const dir = new Phaser.Math.Vector2(
@@ -1126,7 +1131,7 @@ export class WorldScene extends Phaser.Scene {
       const near = this.enemies.filter((e) => e.alive && Phaser.Math.Distance.Between(d.x, d.y, e.x, e.y) < 70);
       vfx.droneField(this, d, 70);
       for (const e of near) {
-        this.damageEnemy(e, 3);
+        this.damageEnemy(e, Math.round(3 * this.ferro.mods.droneDamageMul));
         e.pull(d.x, d.y + 12, 700);
       }
       this.attractPickups(this.player.x, this.player.y, 110);
@@ -1141,10 +1146,10 @@ export class WorldScene extends Phaser.Scene {
       const c = this.crane;
       if (best) {
         vfx.droneZap(this, d, best);
-        this.damageEnemy(best, 5);
+        this.damageEnemy(best, Math.round(5 * this.ferro.mods.droneDamageMul));
       } else if (c?.active && Phaser.Math.Distance.Between(d.x, d.y, c.sprite.x, c.sprite.y) < 110) {
         vfx.droneZap(this, d, c.sprite);
-        this.damageCrane(5);
+        this.damageCrane(Math.round(5 * this.ferro.mods.droneDamageMul));
       }
     }
   }
@@ -1185,7 +1190,7 @@ export class WorldScene extends Phaser.Scene {
         this.collectPickup(p, 'Chão');
         return false;
       }
-      if ((p.born < 0 || d < 28) && time - Math.max(0, p.born) > 250) {
+      if ((p.born < 0 || d < 28 + this.ferro.mods.pickupRadius) && time - Math.max(0, p.born) > 250) {
         p.sprite.x += (px - p.sprite.x) * 0.15;
         p.sprite.y += (py - p.sprite.y) * 0.15;
         p.halo.setPosition(p.sprite.x, p.sprite.y);
@@ -1196,7 +1201,7 @@ export class WorldScene extends Phaser.Scene {
 
   private startSearch(pile: Pile): void {
     if (!this.pileReady(pile) || this.searching) return;
-    this.searching = { until: this.time.now + 750, total: 750, finish: () => this.finishSearch(pile) };
+    this.searching = { until: this.time.now + 750 * this.ferro.mods.searchTimeMul, total: 750 * this.ferro.mods.searchTimeMul, finish: () => this.finishSearch(pile) };
   }
 
   // ---------------- salvageable wrecks and loose scrap ----------------
@@ -1393,6 +1398,7 @@ export class WorldScene extends Phaser.Scene {
     const firstWagon = pile.special === 'first_wagon' && !session.state.flags.first_wagon_looted;
     const table = PILE_TABLES[pile.loot] ?? PILE_TABLES.yard_pile;
     const bag: ItemBag = firstWagon ? { pulse_core: 1, gear: 1, cable: 1, scrap: 3 } : rollTable(Math.random, table.loot, table.rolls);
+    if (!firstWagon && this.ferro.consumeSearchBonus()) for (const [id, n] of Object.entries(rollTable(Math.random, table.loot, 1)) as [ItemId, number][]) bag[id] = (bag[id] ?? 0) + n;
     session.recordFinds(bag, firstWagon ? 'Primeiro vagão' : 'Pilha de sucata');
     session.mutate((s) => {
       addItems(s, bag);

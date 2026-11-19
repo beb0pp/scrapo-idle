@@ -1,0 +1,11 @@
+title = "scrapo-ferromancia gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Lockfile hashes and binary image sources"
+paths = [
+  '''package-lock\.json''',
+  '''assets-src/''',
+]

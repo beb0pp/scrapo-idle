@@ -10,6 +10,7 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "typecheck": "tsc --noEmit",
+    "e2e": "playwright test -c playwright.ferro.config.ts",
     "maps": "node tools/build-maps.ts"
   },
   "dependencies": {
@@ -17,7 +18,7 @@
     "phaser": "3.90.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.1",
+    "@playwright/test": "^1.65.1",
     "typescript": "~5.9.3",
     "vite": "~7.3.8",
     "vitest": "~3.2.4"

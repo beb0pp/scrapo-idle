@@ -50,6 +50,7 @@ if (import.meta.env.DEV) {
         game.scene.start('World', { mapId, entry });
       },
       world: () => game.scene.getScene('World'),
+      ferro: () => (game.scene.getScene('World') as unknown as { ferro: unknown }).ferro,
     },
   });
 }
