@@ -238,20 +238,30 @@ export function lootPopup(scene: Phaser.Scene, at: Pt, iconKey: string, text: st
   const rare = color.toLowerCase() !== '#b8bcc4';
   scene.time.delayedCall(delay, () => {
     // laid out in screen pixels, then scaled by 1/zoom so the label reads the same at every zoom
+    const icon = scene.add.image(0, 0, iconKey).setScale(LOOT_ICON_SCALE);
     const label = scene.add
-      .text(12, 0, text, { fontFamily: TEXT_FONT, fontStyle: 'bold', fontSize: '13px', color, stroke: '#0c0a12', strokeThickness: 3 })
+      .text(icon.displayWidth / 2 + 6, 0, text, { fontFamily: TEXT_FONT, fontStyle: 'bold', fontSize: '16px', color, stroke: '#0c0a12', strokeThickness: 4 })
       .setOrigin(0, 0.5);
-    const icon = scene.add.image(0, 0, iconKey);
+    const w = icon.displayWidth + 6 + label.width + 14;
+    const h = Math.max(icon.displayHeight, label.height) + 6;
+    const left = -icon.displayWidth / 2 - 7;
+    const plate = scene.add.rectangle(left, 0, w, h, 0x0c0a12, 0.72).setOrigin(0, 0.5).setStrokeStyle(2, tint, rare ? 0.9 : 0.35);
     const fit = 1 / scene.cameras.main.zoom;
-    const box = scene.add.container(at.x - ((label.width + 18) / 2) * fit, at.y, [icon, label]).setScale(fit).setDepth(FX + 3).setAlpha(0);
-    scene.tweens.add({ targets: box, alpha: 1, y: at.y - 10, duration: 180, ease: 'Back.easeOut' });
-    scene.tweens.add({ targets: box, alpha: 0, y: at.y - 26, delay: 1300, duration: 500, ease: 'Quad.easeIn', onComplete: () => box.destroy() });
+    const box = scene.add.container(at.x - (w / 2 + left) * fit, at.y, [plate, icon, label]).setScale(fit * 0.6).setDepth(FX + 3).setAlpha(0);
+    scene.tweens.add({ targets: box, alpha: 1, scale: fit, y: at.y - 12 * fit, duration: 200, ease: 'Back.easeOut' });
+    scene.tweens.add({ targets: box, alpha: 0, y: at.y - 40 * fit, delay: 1600, duration: 500, ease: 'Quad.easeIn', onComplete: () => box.destroy() });
     if (rare) {
       flash(scene, at, 0.6, tint, 360, 0.9);
       sparks(scene, at, 8, tint, 45, 320);
     }
   });
 }
+
+/** Screen-pixel height of one loot popup row, for stacking several finds. */
+export const LOOT_ROW_PX = 40;
+/** Rough half width of a popup in screen pixels, to tell whether it would cover the hero. */
+export const LOOT_HALF_WIDTH_PX = 110;
+const LOOT_ICON_SCALE = 2;
 
 /** Damage number popping out of a hit target. */
 export function damageNumber(scene: Phaser.Scene, at: Pt, amount: number, crit = false): void {
