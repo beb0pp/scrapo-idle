@@ -149,6 +149,8 @@ export class WorldScene extends Phaser.Scene {
   private evadeUntil = 0;
   private modalSince = 0;
   private autoStuck = { x: 0, y: 0, since: 0 };
+  /** Foes (or the crane) auto could not reach recently. */
+  private autoFoeSkip = new Map<Enemy | 'crane', number>();
   private autoTarget: Interactable | null = null;
   private autoSkip = new Map<Interactable, number>();
   private holdMoveAt = 0;
@@ -497,7 +499,9 @@ export class WorldScene extends Phaser.Scene {
     const body = p.body as Phaser.Physics.Arcade.Body;
     const moving = body.velocity.lengthSq() > 25;
     if (Math.abs(this.facing.x) > 0.2) p.setFlipX(this.facing.x < 0);
-    let key = moving ? 'hero-walk' : 'hero-idle';
+    const f = this.facing;
+    const view = Math.abs(f.x) > Math.abs(f.y) ? '-side' : f.y < -0.6 ? '-up' : '';
+    let key = `${moving ? 'hero-walk' : 'hero-idle'}${view}`;
     if (this.searching) key = 'hero-collect';
     if (this.action && time < this.action.until) key = this.action.key;
     else this.action = null;
@@ -720,8 +724,9 @@ export class WorldScene extends Phaser.Scene {
       this.order = null;
     }
     if (!lowHp) {
-      const foe = near(150).sort((a, b) => dist(a.x, a.y) - dist(b.x, b.y))[0];
-      if (foe || (crane && dist(crane.sprite.x, crane.sprite.y) < 200)) {
+      const benched = (k: Enemy | 'crane') => (this.autoFoeSkip.get(k) ?? 0) > time;
+      const foe = near(150).filter((e) => !benched(e)).sort((a, b) => dist(a.x, a.y) - dist(b.x, b.y))[0];
+      if (foe || (crane && !benched('crane') && dist(crane.sprite.x, crane.sprite.y) < 200)) {
         this.order = { kind: 'enemy', enemy: foe ?? null, path: [], repathAt: 0 };
         return;
       }
@@ -746,7 +751,11 @@ export class WorldScene extends Phaser.Scene {
       const d = dist(it.x, it.y);
       if (d < bestD) (best = it), (bestD = d);
     }
-    if (!best && this.mapId === 'patio') best = this.interactables.find((it) => it.goto === 'yard') ?? null;
+    // nothing left here: head for the map with the most work (yard), or the dungeon when already in the yard
+    if (!best) {
+      const next = this.mapId === 'yard' ? 'dungeon' : 'yard';
+      best = this.interactables.find((it) => it.goto === next && (this.autoSkip.get(it) ?? 0) <= time) ?? null;
+    }
     if (!best) return;
     const path = this.pathTo(best.x, best.y);
     if (!path.length) {
@@ -761,14 +770,16 @@ export class WorldScene extends Phaser.Scene {
   private autoUnstick(time: number): boolean {
     const st = this.autoStuck;
     const moved = Phaser.Math.Distance.Between(st.x, st.y, this.feetX, this.feetY) > 3;
-    if (moved || !this.order || this.order.kind === 'enemy') {
+    const swinging = time - (this.ready.attack - COOLDOWN.attack) < 1200;
+    if (moved || !this.order || swinging) {
       st.x = this.feetX;
       st.y = this.feetY;
       st.since = time;
       return false;
     }
     if (time - st.since < 1500) return false;
-    if (this.autoTarget) this.autoSkip.set(this.autoTarget, time + 20_000);
+    if (this.order.kind === 'enemy') this.autoFoeSkip.set(this.order.enemy ?? 'crane', time + 15_000);
+    else if (this.autoTarget) this.autoSkip.set(this.autoTarget, time + 20_000);
     this.autoTarget = null;
     this.order = null;
     st.since = time;

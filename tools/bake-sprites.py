@@ -11,8 +11,11 @@ SRC = ROOT / 'assets-src' / 'sprites'
 OUT = ROOT / 'public' / 'sprites'
 
 HERO_FRAME = (64, 72)
-HERO_AT = (11, 6)  # where the base art sits inside a frame
-WRENCH_PIVOT = (35 + HERO_AT[0], 36 + HERO_AT[1])
+# base art (assets-src/sprites/hero_base.png, 49x66 from tools/adultify-hero.py) sits feet-down at frame row 70
+HERO_AT = (11, 4)
+HAND = (36, 27)  # where the hand grips the wrench in the base art
+LEG_Y = 48  # first row of the legs in the base art
+WRENCH_PIVOT = (HAND[0] + HERO_AT[0], HAND[1] + HERO_AT[1])
 
 DOG_FRAME = (32, 34)
 DOG_AT = (1, 2)
@@ -47,14 +50,70 @@ def compose(frame: tuple[int, int], parts: list) -> Image.Image:
     return out
 
 
+HAIR_DARK, HAIR_MID = (59, 49, 62, 255), (89, 78, 90, 255)
+
+
+def back_view(base: Image.Image) -> Image.Image:
+    """Seen from behind: the face area becomes the back of the hair, then the art is mirrored."""
+    out = base.copy()
+    px = out.load()
+    for y in range(6, 25):
+        for x in range(10, 31):
+            r, g, b, a = px[x, y]
+            if not a:
+                continue
+            skin = r > 170 and g > 110 and b < 175 and r - b > 60
+            eye = (g > 140 and b > 140 and r < 140) or (r < 40 and b > r + 30)
+            white = r > 190 and g > 170 and b > 150
+            if skin or eye or white:
+                px[x, y] = HAIR_MID if (x + y) % 3 else HAIR_DARK
+    return out.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+
+
+SKIN = (226, 160, 120, 255)
+
+
+def side_view(base: Image.Image) -> Image.Image:
+    """Turned toward the wrench side: head shifted forward (hair stays behind), far eye hidden, torso narrowed."""
+    out = Image.new('RGBA', base.size)
+    torso = base.crop((0, 19, base.width, base.height))
+    # drop 4 columns from the back of the torso so the body reads narrower in profile
+    narrow = Image.new('RGBA', torso.size)
+    narrow.alpha_composite(torso.crop((0, 0, 8, torso.height)), (4, 0))
+    narrow.alpha_composite(torso.crop((12, 0, torso.width, torso.height)), (12, 0))
+    out.alpha_composite(narrow, (0, 19))
+    head = base.crop((0, 0, base.width, 19))
+    out.alpha_composite(head, (0, 0))
+    out.alpha_composite(head.crop((8, 0, 34, 19)), (10, 0))
+    px = out.load()
+    for y in range(11, 18):
+        for x in range(14, 22):
+            r, g, b, a = px[x, y]
+            if a and r < 60 and g < 60 and b < 70:
+                left, right = px[x - 1, y], px[x + 1, y]
+                if left[0] > 180 or right[0] > 180:
+                    px[x, y] = SKIN
+    return out
+
+
 def hero_frames() -> list[Image.Image]:
     base = Image.open(SRC / 'hero_base.png').convert('RGBA')
-    wrench = region(base, lambda x, y: x >= 34 and y <= 43)
-    upper = region(base, lambda x, y: y < 50 and not (x >= 34 and y <= 43))
-    leg_l = region(base, lambda x, y: y >= 50 and x < 21)
-    leg_r = region(base, lambda x, y: y >= 50 and x >= 21)
+    front = build_hero(base)
+    back = build_hero(back_view(base), wrench_side='left')
+    side = build_hero(side_view(base))
+    # 0-14 front set, 15-19 back set (idle, walk x4), 20-24 side set (idle, walk x4)
+    return front + [back[0], back[2], back[3], back[4], back[5]] + [side[0], side[2], side[3], side[4], side[5]]
+
+
+def build_hero(base: Image.Image, wrench_side: str = 'right') -> list[Image.Image]:
+    in_wrench = (lambda x, y: x >= 34 and y <= 40) if wrench_side == 'right' else (lambda x, y: x <= 14 and y <= 40)
+    wrench = region(base, in_wrench)
+    upper = region(base, lambda x, y: y < LEG_Y and not in_wrench(x, y))
+    mid = 21 if wrench_side == 'right' else 28
+    leg_l = region(base, lambda x, y: y >= LEG_Y and x < mid)
+    leg_r = region(base, lambda x, y: y >= LEG_Y and x >= mid)
     W, U, L, R = (place(p, HERO_FRAME, HERO_AT) for p in (wrench, upper, leg_l, leg_r))
-    pv = WRENCH_PIVOT
+    pv = WRENCH_PIVOT if wrench_side == 'right' else (49 - 1 - HAND[0] + HERO_AT[0], HAND[1] + HERO_AT[1])
 
     def pose(up=(0, 0), wr=(0, 0, 0), ll=(0, 0), lr=(0, 0)) -> Image.Image:
         return compose(HERO_FRAME, [

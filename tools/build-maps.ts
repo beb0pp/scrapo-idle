@@ -89,7 +89,7 @@ const LEGEND: Record<string, [number | null, number]> = {
   'Y': [TILES.railH, TILES.locoL], 'J': [TILES.railH, TILES.locoR], 'n': [null, TILES.moundRust],
   'g': [null, TILES.drums], 'k': [null, TILES.plates], 'M': [null, TILES.craneArm], '^': [null, TILES.tree],
 };
-const INTERACT_CHARS = '@PGEHXO$TN';
+const INTERACT_CHARS = '@PGEHQNUXO$TN';
 const WALL_TERRAIN = new Set<number>([TILES.wall]);
 
 interface Obj {
@@ -327,7 +327,7 @@ function yard(): MapSpec {
     const x = 3 + Math.floor(r() * (W - 6)), y = 3 + Math.floor(r() * (H - 6));
     if (ok(x, y) && !nearPath(x, y, 1)) put(g, x, y, 'P'), piles++;
   }
-  const enemies: [string, number][] = [['E', 10], ['H', 3]];
+  const enemies: [string, number][] = [['E', 7], ['Q', 4], ['N', 2]];
   for (const [ch, n] of enemies)
     for (let placed = 0, tries = 0; placed < n && tries < 2000; tries++) {
       const x = 18 + Math.floor(r() * (W - 20)), y = 2 + Math.floor(r() * (H - 4));
@@ -364,7 +364,7 @@ function dungeon(): MapSpec {
   for (const [x, y] of [[13, 6], [18, 3], [11, 18], [20, 15]]) put(g, x, y, 'u');
   rect(g, 15, 26, 16, 26, '>');
   for (const [x, y] of [[5, 15], [26, 16], [8, 20], [21, 20], [16, 15], [11, 19], [24, 18], [6, 9], [25, 6], [15, 22]]) put(g, x, y, 'P');
-  put(g, 10, 15, 'E'); put(g, 22, 18, 'E'); put(g, 19, 15, 'E');
+  put(g, 10, 15, 'H'); put(g, 22, 18, 'U'); put(g, 19, 15, 'N'); put(g, 8, 16, 'Q'); put(g, 24, 15, 'Q');
   put(g, 15, 4, 'X');
   return {
     id: 'dungeon', displayName: 'Estação de Triagem Soterrada', base: 'd', grid: g, piles: { loot: 'dungeon_pile' },
@@ -408,6 +408,9 @@ function toTiled(spec: MapSpec) {
       if (ch === 'G') objs.push({ type: 'pile', name: 'first_wagon', x, y, props: { loot: spec.piles.loot, special: 'first_wagon' } });
       if (ch === 'E') objs.push({ type: 'enemy', x, y, props: { kind: 'sorter' } });
       if (ch === 'H') objs.push({ type: 'enemy', x, y, props: { kind: 'press' } });
+      if (ch === 'Q') objs.push({ type: 'enemy', x, y, props: { kind: 'sparkbot' } });
+      if (ch === 'N') objs.push({ type: 'enemy', x, y, props: { kind: 'magnetron' } });
+      if (ch === 'U') objs.push({ type: 'enemy', x, y, props: { kind: 'scrapgolem' } });
       if (ch === 'X') objs.push({ type: 'boss', name: 'crane', x, y, props: { kind: 'crane' } });
       if (ch === 'O') objs.push({ type: 'workbench', x, y });
       if (ch === '$') objs.push({ type: 'vendor', x, y });

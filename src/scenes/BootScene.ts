@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { buildEnemyArt } from '../art/enemyArt';
 import { buildSprites } from '../art/sprites';
 import { initHud, initPanels } from '../ui/ui';
 
@@ -16,6 +17,7 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     buildSprites(this);
+    buildEnemyArt(this);
     initHud();
     initPanels();
     this.scene.start('Title');

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-export type EnemyKind = 'sorter' | 'press';
+export type EnemyKind = 'sorter' | 'press' | 'sparkbot' | 'magnetron' | 'scrapgolem';
 
 export interface Target {
   x: number;
@@ -21,11 +21,18 @@ interface Cfg {
   light: boolean;
   tex: string;
   anim: string;
+  size: number;
+  ranged?: boolean;
+  lunge?: boolean;
+  slam?: boolean;
 }
 
 const CFG: Record<EnemyKind, Cfg> = {
-  sorter: { hp: 30, patrol: 22, chase: 50, aggro: 96, reach: 18, windup: 600, recover: 650, dmg: 10, radius: 22, light: true, tex: 'sorter', anim: 'sorter-walk' },
-  press: { hp: 80, patrol: 16, chase: 34, aggro: 88, reach: 22, windup: 950, recover: 950, dmg: 22, radius: 32, light: false, tex: 'press', anim: 'press-walk' },
+  sorter: { hp: 30, patrol: 22, chase: 50, aggro: 96, reach: 18, windup: 600, recover: 650, dmg: 10, radius: 22, light: true, tex: 'sorter', anim: 'sorter-walk', size: 16 },
+  press: { hp: 80, patrol: 16, chase: 34, aggro: 88, reach: 22, windup: 950, recover: 950, dmg: 22, radius: 32, light: false, tex: 'press', anim: 'press-walk', size: 24 },
+  sparkbot: { hp: 20, patrol: 38, chase: 82, aggro: 112, reach: 44, windup: 360, recover: 520, dmg: 12, radius: 52, light: true, tex: 'sparkbot', anim: 'sparkbot-walk', size: 16, lunge: true },
+  magnetron: { hp: 48, patrol: 20, chase: 34, aggro: 150, reach: 76, windup: 700, recover: 900, dmg: 14, radius: 150, light: false, tex: 'magnetron', anim: 'magnetron-walk', size: 24, ranged: true },
+  scrapgolem: { hp: 130, patrol: 12, chase: 27, aggro: 100, reach: 30, windup: 1100, recover: 1050, dmg: 28, radius: 42, light: false, tex: 'scrapgolem', anim: 'scrapgolem-walk', size: 32, slam: true },
 };
 
 const LEASH = 240;
@@ -36,7 +43,7 @@ export class Enemy {
   readonly cfg: Cfg;
   readonly sprite: Phaser.Physics.Arcade.Sprite;
   hp: number;
-  private state: 'patrol' | 'chase' | 'windup' | 'recover' | 'stunned' = 'patrol';
+  private state: 'patrol' | 'chase' | 'windup' | 'attack' | 'recover' | 'stunned' = 'patrol';
   private until = 0;
   private home: Phaser.Math.Vector2;
   private wander: Phaser.Math.Vector2 | null = null;
@@ -44,6 +51,10 @@ export class Enemy {
   private knock = { vx: 0, vy: 0, until: 0 };
   private readonly gfx: Phaser.GameObjects.Graphics;
   private readonly scene: Phaser.Scene;
+  private attackTarget = new Phaser.Math.Vector2();
+  private attackHit = false;
+  private projectile: Phaser.Physics.Arcade.Sprite | null = null;
+  private projectileStart = new Phaser.Math.Vector2();
 
   constructor(scene: Phaser.Scene, x: number, y: number, kind: EnemyKind) {
     this.scene = scene;
@@ -53,9 +64,10 @@ export class Enemy {
     this.home = new Phaser.Math.Vector2(x, y);
     this.sprite = scene.physics.add.sprite(x, y, this.cfg.tex, 0);
     this.sprite.play(this.cfg.anim);
-    (this.sprite.body as Phaser.Physics.Arcade.Body).setSize(10, 7).setOffset(3, 7);
+    const bodySize = Math.max(10, Math.floor(this.cfg.size * 0.58));
+    (this.sprite.body as Phaser.Physics.Arcade.Body).setSize(bodySize, Math.max(7, Math.floor(this.cfg.size * 0.32))).setOffset(Math.floor((this.cfg.size - bodySize) / 2), this.cfg.size - Math.max(7, Math.floor(this.cfg.size * 0.32)));
     this.gfx = scene.add.graphics();
-    this.shadow = scene.add.ellipse(x, y + 6, kind === 'press' ? 16 : 12, 4, 0x000000, 0.35);
+    this.shadow = scene.add.ellipse(x, y + this.cfg.size * 0.35, Math.max(12, this.cfg.size * 0.72), 4, 0x000000, 0.35);
   }
 
   private readonly shadow: Phaser.GameObjects.Ellipse;
@@ -89,6 +101,7 @@ export class Enemy {
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     const dist = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
     this.gfx.clear();
+    this.updateProjectile(target);
     switch (this.state) {
       case 'stunned':
         if (time < this.knock.until) body.setVelocity(this.knock.vx, this.knock.vy);
@@ -99,13 +112,40 @@ export class Enemy {
       case 'windup': {
         body.setVelocity(0, 0);
         const t = 1 - (this.until - time) / this.cfg.windup;
-        this.gfx.fillStyle(TELEGRAPH, 0.12 + 0.3 * t).fillCircle(this.x, this.y + 2, this.cfg.radius * t);
-        this.gfx.lineStyle(1, TELEGRAPH, 0.9).strokeCircle(this.x, this.y + 2, this.cfg.radius);
+        if (this.cfg.ranged) {
+          this.gfx.lineStyle(2, TELEGRAPH, 0.25 + t * 0.7).lineBetween(this.x, this.y - 3, this.attackTarget.x, this.attackTarget.y);
+          this.gfx.fillStyle(TELEGRAPH, 0.1 + t * 0.25).fillCircle(this.attackTarget.x, this.attackTarget.y, 8);
+        } else {
+          this.gfx.fillStyle(TELEGRAPH, 0.12 + 0.3 * t).fillCircle(this.x, this.y + 2, this.cfg.radius * t);
+          this.gfx.lineStyle(1, TELEGRAPH, 0.9).strokeCircle(this.x, this.y + 2, this.cfg.radius);
+        }
         this.sprite.setTint(Math.floor(time / 80) % 2 ? 0xff8a6a : 0xffffff);
         if (time >= this.until) {
           this.sprite.clearTint();
-          if (dist <= this.cfg.radius + 3) target.hurt(this.cfg.dmg, this.x, this.y);
-          this.flash(this.cfg.radius);
+          this.sprite.play(`${this.kind}-attack`, true);
+          this.attackHit = false;
+          if (this.cfg.ranged) this.fireBolt();
+          this.setState('attack', time + (this.cfg.lunge ? 220 : 120));
+        }
+        break;
+      }
+      case 'attack': {
+        if (this.cfg.lunge) {
+          const lunge = new Phaser.Math.Vector2(this.attackTarget.x - this.x, this.attackTarget.y - this.y).normalize().scale(176);
+          body.setVelocity(lunge.x, lunge.y);
+          if (!this.attackHit && Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y) <= this.cfg.radius + 8) {
+            target.hurt(this.cfg.dmg, this.x, this.y);
+            this.attackHit = true;
+          }
+        } else {
+          body.setVelocity(0, 0);
+          if (!this.attackHit && !this.cfg.ranged && dist <= this.cfg.radius + 3) {
+            target.hurt(this.cfg.dmg, this.x, this.y);
+            this.attackHit = true;
+          }
+        }
+        if (time >= this.until) {
+          if (!this.cfg.ranged && !this.cfg.lunge) this.flash(this.cfg.radius);
           this.setState('recover', time + this.cfg.recover);
         }
         break;
@@ -133,8 +173,14 @@ export class Enemy {
           this.setState('patrol', time);
           break;
         }
-        if (dist <= this.cfg.reach) {
+        if (this.cfg.ranged && dist < this.cfg.reach * 0.62) {
+          this.moveTo(this.x - (target.x - this.x), this.y - (target.y - this.y), this.cfg.chase);
+          break;
+        }
+        if (dist <= this.cfg.reach || (this.cfg.ranged && dist <= this.cfg.aggro)) {
+          this.attackTarget.set(target.x, target.y);
           this.setState('windup', time + this.cfg.windup);
+          this.sprite.play(`${this.kind}-windup`, true);
           break;
         }
         this.moveTo(target.x, target.y, this.cfg.chase);
@@ -159,6 +205,7 @@ export class Enemy {
     v.normalize().scale(speed);
     (this.sprite.body as Phaser.Physics.Arcade.Body).setVelocity(v.x, v.y);
     this.sprite.setFlipX(v.x < 0);
+    if (this.state === 'patrol' || this.state === 'chase') this.sprite.play(this.cfg.anim);
   }
 
   private setState(s: Enemy['state'], until: number): void {
@@ -166,6 +213,7 @@ export class Enemy {
     this.until = until;
     if (s !== 'stunned') this.sprite.setAngle(0);
     if (s !== 'windup') this.sprite.clearTint();
+    if (s === 'stunned') this.sprite.play(`${this.kind}-hurt`, true);
   }
 
   private flash(r: number): void {
@@ -173,11 +221,43 @@ export class Enemy {
     this.scene.tweens.add({ targets: ring, alpha: 0, duration: 160, onComplete: () => ring.destroy() });
   }
 
+  private fireBolt(): void {
+    this.projectile?.destroy();
+    const angle = Phaser.Math.Angle.Between(this.x, this.y, this.attackTarget.x, this.attackTarget.y);
+    const bolt = this.scene.physics.add.sprite(this.x, this.y - 2, 'dot');
+    bolt.setTint(0x5fd0d8).setScale(3).setDepth(this.y + 2);
+    (bolt.body as Phaser.Physics.Arcade.Body).setCircle(1).setVelocity(Math.cos(angle) * 86, Math.sin(angle) * 86);
+    this.projectile = bolt;
+    this.projectileStart.set(this.x, this.y);
+  }
+
+  private updateProjectile(target: Target): void {
+    const bolt = this.projectile;
+    if (!bolt || !bolt.active) return;
+    bolt.setDepth(bolt.y + 2);
+    if (Phaser.Math.Distance.Between(bolt.x, bolt.y, this.projectileStart.x, this.projectileStart.y) > 150 || this.hitsWall(bolt.x, bolt.y)) {
+      bolt.destroy(); this.projectile = null; return;
+    }
+    if (Phaser.Math.Distance.Between(bolt.x, bolt.y, target.x, target.y) <= 8) {
+      target.hurt(this.cfg.dmg, this.x, this.y);
+      this.flash(10);
+      bolt.destroy(); this.projectile = null;
+    }
+  }
+
+  private hitsWall(x: number, y: number): boolean {
+    return this.scene.children.list.some((child) => {
+      if (!(child instanceof Phaser.Tilemaps.TilemapLayer)) return false;
+      return Boolean(child.getTileAtWorldXY(x, y)?.collides);
+    });
+  }
+
   /** Returns true when this hit killed it. */
   damage(n: number, fromX: number, fromY: number): boolean {
     if (!this.alive) return false;
     this.hp -= n;
     this.sprite.setTintFill(0xffffff);
+    this.sprite.play(`${this.kind}-hurt`, true);
     this.scene.time.delayedCall(70, () => this.sprite.active && this.sprite.clearTint());
     const away = new Phaser.Math.Vector2(this.x - fromX, this.y - fromY).normalize().scale(this.light ? 90 : 30);
     this.knock = { vx: away.x, vy: away.y, until: this.scene.time.now + 90 };
@@ -218,6 +298,11 @@ export class Enemy {
     this.shadow.destroy();
     (this.sprite.body as Phaser.Physics.Arcade.Body).enable = false;
     this.sprite.stop();
+    this.projectile?.destroy();
+    for (let i = 0; i < 4; i++) {
+      const piece = this.scene.add.rectangle(this.x, this.y, 3, 3, i % 2 ? 0xd7833b : 0x7b8aa3).setDepth(this.y + 2);
+      this.scene.tweens.add({ targets: piece, x: this.x + Phaser.Math.Between(-18, 18), y: this.y + Phaser.Math.Between(-13, 8), angle: Phaser.Math.Between(-180, 180), alpha: 0, duration: 280, onComplete: () => piece.destroy() });
+    }
     this.scene.tweens.add({ targets: this.sprite, alpha: 0, angle: 90, duration: 300, onComplete: () => this.sprite.destroy() });
   }
 }
