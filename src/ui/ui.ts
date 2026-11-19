@@ -1,6 +1,6 @@
 export { bagHtml } from './shared';
 export { hideExtraction, renderExtraction, type ExtractionHandlers } from './extraction';
-export { hudFrame, initHud, objective, onSkillClick, refreshHud, showHud, type HudFrame } from './hud';
+export { hudFrame, initHud, objective, onActionClick, onSkillClick, refreshHud, showHud, type HudFrame } from './hud';
 export { closePanel, initPanels, onAfkStart, onPanelChange, openPanel, panelOpen, togglePanel, type PanelKind } from './panels';
 export { setMinimap, setMinimapPlayer, type MinimapData } from './minimap';
 
