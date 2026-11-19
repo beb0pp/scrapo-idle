@@ -39,6 +39,10 @@ Mochila: [Personagem] [Itens 4 colunas] [Detalhe]
 - Bloqueada: botão desativado no Terminal.
 - `I`: Mochila; `Esc`: fecha; Q/W/E/R e mouse preservados; 1–5 são reservados para referências de ferramentas/consumíveis quando a hotbar for expandida.
 
+## Ações sempre visíveis
+
+Toda ferramenta e funcionalidade tem um controle clicável visível na tela, como no Tibia: o jogador nunca precisa lembrar que existe uma tecla (M, O, F, Espaço…). O atalho de teclado continua como extra e aparece no próprio botão como selo de tecla (`.skill-key`). Nova ação ou painel só entra com o botão junto.
+
 ## Integração com WorldScene
 
 Após conceder loot de pilha/drop, o lead deve chamar, depois de `session.mutate(...)`:

@@ -12,7 +12,7 @@ const INTRO = [
 const CONTROLS = `
   <div class="control-card">
     <div class="control-group"><h2>Mouse</h2><p><b class="mouse-key left">◐</b><span>Clique no chão: caminhe. Segure e arraste para continuar.</span></p><p><b class="mouse-key left">◐</b><span>Inimigo: persiga e ataque. Pilha, NPC, oficina ou terminal: vá e use.</span></p><p><b class="mouse-key right">◑</b><span>Botão direito: investida em direção ao cursor.</span></p><p><b class="mouse-key wheel">↕</b><span>Roda: zoom.</span></p></div>
-    <div class="control-group"><h2>Movimento</h2><p><b class="key-cap">← ↑ ↓ →</b><span>Setas também movem.</span></p><p><b class="key-cap">F</b><span>Interagir</span></p><p><b class="key-cap">I</b><span>Inventário</span></p><p><b class="key-cap">Esc</b><span>Fechar painel</span></p></div>
+    <div class="control-group"><h2>Movimento</h2><p><b class="key-cap">← ↑ ↓ →</b><span>Setas também movem.</span></p><p><b class="key-cap">F</b><span>Interagir</span></p><p><b class="key-cap">I</b><span>Inventário</span></p><p><b class="key-cap">O</b><span>Oficina</span></p><p><b class="key-cap">Esc</b><span>Fechar painel</span></p></div>
     <div class="control-group abilities"><h2>Combate</h2><p><b class="key-cap">Q</b><span>Pulso Magnético — puxa inimigos leves.</span></p><p><b class="key-cap">W</b><span>Arco Elétrico — salta entre alvos.</span></p><p><b class="key-cap">E</b><span>Investida Hidráulica — rompe o ímã e interrompe golpes.</span></p><p><b class="key-cap">R</b><span>Sobrecarga do drone — requer o drone.</span></p><p><b class="key-cap wide">Espaço</b><span>Ataque com a chave inglesa.</span></p></div>
   </div>`;
 

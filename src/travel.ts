@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { generateArea } from './core/huntGen';
 import { huntTiledMap } from './core/huntMap';
-import { areaById, regionOf, regionUnlocked } from './data/hunt';
+import { areaById, areaUnlocked, regionOf, regionUnlocked } from './data/hunt';
 import { session } from './session';
 import { closePanel, toast } from './ui/ui';
 
@@ -14,13 +14,17 @@ export function bindTravel(g: Phaser.Game): void {
   game = g;
 }
 
-/** Enters a hunt area. Refuses (with a toast) when the region is above the hero's level or an extraction is running. */
+/** Enters a hunt area. Refuses (with a toast) when the region or area is above the hero's level or an extraction is running. */
 export function travelToArea(areaId: string): boolean {
   const area = areaById(areaId);
   if (!game || !area) return false;
   const region = regionOf(area);
   if (!regionUnlocked(session.state, region)) {
     toast(`${region.name} exige Nv ${region.minLevel}.`, 'warn');
+    return false;
+  }
+  if (!areaUnlocked(session.state, area)) {
+    toast(`${area.name} exige Nv ${area.level}.`, 'warn');
     return false;
   }
   if (session.state.afk) {

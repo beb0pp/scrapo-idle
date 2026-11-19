@@ -12,13 +12,22 @@ export interface HudFrame {
   area: string;
   cooldowns: number[];
   prompt: string | null;
+  /** Label of what F would use right now; null when nothing is in reach. */
+  interact: string | null;
   boss: { hp: number; max: number } | null;
 }
 
+export type HudAction = 'attack' | 'use';
+
 let skillHandler: (index: number) => void = () => {};
+let actionHandler: (action: HudAction) => void = () => {};
 
 export function onSkillClick(handler: (index: number) => void): void {
   skillHandler = handler;
+}
+
+export function onActionClick(handler: (action: HudAction) => void): void {
+  actionHandler = handler;
 }
 
 export function initHud(): void {
@@ -31,7 +40,7 @@ export function initHud(): void {
     </div>
     <div id="objective" class="objective"></div>
     <aside id="world-side" class="world-side">
-      <section class="world-card minimap-card"><h3>Minimapa</h3><canvas id="minimap" width="216" height="144"></canvas></section>
+      <section class="world-card minimap-card"><h3>Minimapa</h3><button id="minimap-map-btn" class="minimap-map-btn" data-open="map" aria-label="Mapa de caça (M)" title="Mapa de caça (M)"><span class="skill-key">M</span><img src="${skillIconUrls.map}" alt="" aria-hidden="true"></button><canvas id="minimap" width="216" height="144"></canvas></section>
       <section id="extraction-card" class="world-card"></section>
       <section id="recent-finds" class="world-card"></section>
     </aside>
@@ -40,12 +49,24 @@ export function initHud(): void {
       ${skillButton('Mochila', 'I', 'backpack', 'data-open="inventory"', 'inv', '<i class="bag-count" id="bag-count"></i>')}
       ${skillButton('Mapa', 'M', 'map', 'data-open="map" title="Mapa das áreas de caça (M)"', 'map-btn')}
       ${skillButton('Auto', 'T', 'auto', 'id="auto-btn" title="Modo automático: luta, desmonta sucata e recolhe sozinho (T)"', 'auto-btn')}
+      <div class="act-stack">
+        <button id="attack-btn" class="act-btn" data-action="attack" aria-label="Atacar (Espaço)" title="Atacar (Espaço)"><b class="skill-key">Espaço</b><span>Atacar</span></button>
+        <button id="use-btn" class="act-btn" data-action="use" aria-label="Usar (F)" title="Usar (F): chegue perto de algo" disabled><b class="skill-key">F</b><span>Usar</span></button>
+      </div>
       ${(['Pulso', 'Arco', 'Investida', 'Sobrecarga'] as const).map((name, index) => skillButton(name, 'QWER'[index], (['pulse', 'arc', 'dash', 'overload'] as const)[index], `data-skill="${index}" title="${['Pulso Magnético: puxa e atordoa inimigos próximos', 'Arco Elétrico: raio em cadeia nos alvos', 'Investida Hidráulica: avanço invulnerável que rompe ímãs e interrompe golpes', 'Sobrecarga do drone: o módulo do drone dispara com força total (precisa do drone montado)'][index]}"`, '', `<i class="cd" id="cd${index}"></i>`)).join('')}
       <div id="tool-hotbar" class="tool-hotbar"></div>
+      ${skillButton('Oficina', 'O', 'workshop', 'data-open="workshop" aria-label="Oficina (O)" title="Oficina: montar drone e módulos (O)"', 'workshop-btn')}
       ${skillButton('Mercado', '$', 'market', 'data-open="vendor"')}
     </div>
     <div id="drone-badge" class="drone-badge"></div>`;
   $('hud').addEventListener('click', handleHudClick);
+  // a mouse click must not leave a HUD button focused, or the next Space/Enter press would click it again
+  $('hud').addEventListener('mousedown', (event) => { if ((event.target as HTMLElement).closest('button')) event.preventDefault(); });
+  // narrow screens wrap the footer; the spell bar and prompt sit on top of whatever height it ends up
+  new ResizeObserver(([entry]) => {
+    const height = Math.round(entry.contentRect.height);
+    if (height > 0) document.documentElement.style.setProperty('--hud-bottom-h', `${height}px`);
+  }).observe(document.querySelector('.hud-bottom')!);
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeMapView(); });
   session.onChange(refreshHud);
   session.onAutoChange((on) => $('auto-btn').classList.toggle('is-on', on));
@@ -62,12 +83,13 @@ export function showHud(visible: boolean): void {
 }
 
 function handleHudClick(event: MouseEvent): void {
-  if ((event.target as HTMLElement).closest('.minimap-card')) {
+  const button = (event.target as HTMLElement).closest('button');
+  if (!button && (event.target as HTMLElement).closest('.minimap-card')) {
     openMapView();
     return;
   }
-  const button = (event.target as HTMLElement).closest('button');
   if (!button) return;
+  if (button.dataset.action) actionHandler(button.dataset.action as HudAction);
   if (button.dataset.skill) skillHandler(Number(button.dataset.skill));
   if (button.dataset.open) window.dispatchEvent(new CustomEvent('scrapo:panel', { detail: button.dataset.open }));
   if (button.dataset.tool) window.dispatchEvent(new CustomEvent('scrapo:tool', { detail: button.dataset.tool }));
@@ -140,6 +162,10 @@ export function hudFrame(frame: HudFrame): void {
   const prompt = $('prompt');
   prompt.hidden = !frame.prompt;
   if (frame.prompt) prompt.textContent = frame.prompt;
+  const use = $<HTMLButtonElement>('use-btn');
+  const useTitle = frame.interact ? `Usar (F): ${frame.interact.replace(/^F\s*—\s*/, '')}` : 'Usar (F): chegue perto de algo';
+  if (use.disabled !== !frame.interact) use.disabled = !frame.interact;
+  if (use.title !== useTitle) use.title = useTitle;
   const boss = $('boss');
   boss.hidden = !frame.boss;
   if (frame.boss) $<HTMLElement>('boss-fill').style.width = `${(frame.boss.hp / frame.boss.max) * 100}%`;

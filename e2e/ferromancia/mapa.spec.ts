@@ -87,6 +87,8 @@ test('lista ordena por nível e "Viajar" leva até a área', async ({ page }) =>
   await win(page).locator('.mapw-mark[data-area="cadinho_rachado"]').click();
   await expect(win(page).locator('.mapw-card')).toContainText('Cadinho Rachado');
   await expect(win(page).locator('.mapw-card')).toContainText('Acima do seu nível');
+  await expect(win(page).locator('.mapw-card .mapw-go')).toBeDisabled();
+  await expect(win(page).locator('.mapw-card .mapw-go')).toHaveText('Exige Nv 16');
   await bannerGone(page);
   await page.screenshot({ path: shot('mapa-1.png') });
 

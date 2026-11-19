@@ -1,6 +1,6 @@
 export const SKILL_ICON_SIZE = 24;
 
-export type SkillIconId = 'backpack' | 'auto' | 'pulse' | 'arc' | 'dash' | 'overload' | 'market' | 'map';
+export type SkillIconId = 'backpack' | 'auto' | 'pulse' | 'arc' | 'dash' | 'overload' | 'market' | 'map' | 'workshop';
 
 const NAVY = '#14121e';
 const COPPER = '#d7833b';
@@ -26,6 +26,8 @@ function market(c: CanvasRenderingContext2D): void { outlined(c, 6, 8, 13, 12, R
 
 function map(c: CanvasRenderingContext2D): void { outlined(c, 2, 4, 6, 16, '#c9a86a', '#efd9a0', '#8a6a3a'); outlined(c, 9, 6, 6, 16, '#b8955a', '#e2c58a', '#7a5a2e'); outlined(c, 16, 4, 6, 16, '#c9a86a', '#efd9a0', '#8a6a3a'); pixel(c, TEAL, 3, 14, 4, 4); pixel(c, TEAL, 10, 16, 3, 4); [[5, 8], [7, 10], [10, 11], [12, 9], [15, 9], [17, 11]].forEach(([x, y]) => pixel(c, RUST, x, y)); outlined(c, 18, 9, 3, 3, '#e8433a', '#ff8a7a', '#8a1e18'); }
 
-const ART: Record<SkillIconId, Painter> = { backpack, auto, pulse, arc, dash, overload, market, map };
+function workshop(c: CanvasRenderingContext2D): void { outlined(c, 13, 3, 7, 7, SLATE, SLATE_LIGHT, '#283142'); [[16, 1, 1, 2], [16, 10, 1, 2], [11, 6, 2, 1], [20, 6, 2, 1]].forEach(([x, y, w, h]) => pixel(c, SLATE_LIGHT, x, y, w, h)); pixel(c, NAVY, 15, 5, 3, 3); outlined(c, 3, 3, 4, 4, SLATE_LIGHT, WHITE, SLATE); pixel(c, NAVY, 4, 3, 2, 2); [[7, 7], [8, 8], [9, 9]].forEach(([x, y]) => { pixel(c, NAVY, x - 1, y - 1, 3, 3); pixel(c, WHITE, x, y); }); outlined(c, 2, 12, 20, 4, COPPER, '#efb36a', RUST); outlined(c, 4, 16, 3, 6, RUST, COPPER, '#6f2e1a'); outlined(c, 17, 16, 3, 6, RUST, COPPER, '#6f2e1a'); pixel(c, AMBER, 9, 13, 6, 1); }
+
+const ART: Record<SkillIconId, Painter> = { backpack, auto, pulse, arc, dash, overload, market, map, workshop };
 function toDataUrl(paint: Painter): string { const canvas = document.createElement('canvas'); canvas.width = SKILL_ICON_SIZE; canvas.height = SKILL_ICON_SIZE; const context = canvas.getContext('2d'); if (!context) throw new Error('Canvas 2D is unavailable for skill icon rendering.'); paint(context); return canvas.toDataURL(); }
 export const skillIconUrls: Record<SkillIconId, string> = Object.fromEntries(Object.entries(ART).map(([id, paint]) => [id, toDataUrl(paint)])) as Record<SkillIconId, string>;

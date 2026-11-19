@@ -42,6 +42,7 @@ window.addEventListener('keydown', (e) => {
   if ((e.key === 't' || e.key === 'T') && inWorld && !e.repeat) session.toggleAuto();
   if ((e.key === 'i' || e.key === 'I') && inWorld && document.getElementById('modal')!.hidden) togglePanel('inventory');
   if ((e.key === 'm' || e.key === 'M') && inWorld && !e.repeat && document.getElementById('modal')!.hidden) togglePanel('map');
+  if ((e.key === 'o' || e.key === 'O') && inWorld && !e.repeat && document.getElementById('modal')!.hidden) togglePanel('workshop');
   const toolIds = ['tool_wrench_old', 'tool_wrench_reinforced', 'tool_hydraulic_pry'] as const;
   const key = Number(e.key);
   if (inWorld && !panelOpen() && key >= 1 && key <= toolIds.length) window.dispatchEvent(new CustomEvent('scrapo:tool', { detail: toolIds[key - 1] }));
