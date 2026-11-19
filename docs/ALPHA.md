@@ -84,8 +84,8 @@ Rodada anterior: s3 teve 2 travas (masmorra esgotada sem plano B e perseguição
 
 ## Pendências
 
-1. **Estilo do herói**: versão adulta aplicada (ver tabela). Se o usuário gerar uma nova referência, basta trocar o arquivo e rodar `python tools/adultify-hero.py <ref>` (ou `pixelize-ref.py` para manter proporções) seguido de `python tools/bake-sprites.py`.
-2. Herói tem três vistas derivadas da mesma arte: frente (0–14), costas (15–19, rosto vira nuca) e lado (20–24, cabeça à frente, tronco estreitado, olho distante oculto; espelhada para a esquerda). Conferido no navegador: andar à esquerda/direita usa `hero-walk-side`, para cima `hero-walk-up`, para baixo `hero-walk`, parado de lado `hero-idle-side`. Um perfil pintado à mão ou gerado continua sendo uma melhoria possível, e a aprovação visual final do herói adulto é do usuário.
+1. **Estilo do herói**: versão adulta aplicada e **aprovada pelo usuário em 2026-11-19** para o alpha. Se o usuário gerar uma nova referência, basta trocar o arquivo e rodar `python tools/adultify-hero.py <ref>` (ou `pixelize-ref.py` para manter proporções) seguido de `python tools/bake-sprites.py`.
+2. Herói tem três vistas derivadas da mesma arte: frente (0–14), costas (15–19, rosto vira nuca) e lado (20–24, cabeça à frente, tronco estreitado, olho distante oculto; espelhada para a esquerda). Conferido no navegador: andar à esquerda/direita usa `hero-walk-side`, para cima `hero-walk-up`, para baixo `hero-walk`, parado de lado `hero-idle-side`. Um perfil pintado à mão ou gerado fica como melhoria pós-alpha.
 3. A extração AFK conta ciclos só com a aba aberta; ao fechar, guarda os ciclos concluídos (decisão de design original, coberta pelo E2E).
 4. Inimigos novos são pequenos no zoom 2; avaliar escala depois de o usuário jogar.
 5. Em espera neste alpha: Ferromancia (sessão própria em `feat/ferromancia`), Kick e backend.
