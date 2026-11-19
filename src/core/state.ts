@@ -37,10 +37,12 @@ export interface FerroState {
   discovered: DiscoveryId[];
   recruited: AllyId[];
   formation: { front: MemberId | null; back: MemberId | null };
+  /** Permanent max mana from Cristais de Éter. */
+  manaBonus: number;
 }
 
 export function newFerro(): FerroState {
-  return { built: [], learned: [], loadout: [null, null, null], discovered: [], recruited: [], formation: { front: 'ferrugem', back: null } };
+  return { built: [], learned: [], loadout: [null, null, null], discovered: [], recruited: [], formation: { front: 'ferrugem', back: null }, manaBonus: 0 };
 }
 
 export interface GameState {

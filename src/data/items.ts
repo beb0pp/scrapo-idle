@@ -15,6 +15,7 @@ export const ITEM_IDS = [
   'tool_wrench_old', 'tool_wrench_reinforced', 'tool_hydraulic_pry',
   'head_scrap_cap', 'body_work_jacket', 'hands_grip_gloves', 'feet_rail_boots', 'accessory_lucky_bolt',
   'ether_shard', 'reagent_ember', 'reagent_ward', 'reagent_lodestone',
+  'ether_crystal', 'mana_flask',
 ] as const;
 
 export type ItemId = (typeof ITEM_IDS)[number];
@@ -36,10 +37,11 @@ const ITEM_RARITIES: Record<ItemId, Rarity> = {
   hands_grip_gloves: 'incomum', feet_rail_boots: 'incomum', tool_hydraulic_pry: 'raro',
   accessory_lucky_bolt: 'raro', relic_capacitor: 'epico', relic_crane_coil: 'reliquia',
   ether_shard: 'epico', reagent_ember: 'incomum', reagent_ward: 'incomum', reagent_lodestone: 'raro',
+  ether_crystal: 'epico', mana_flask: 'incomum',
 };
 
 export function rarityOf(id: ItemId): Rarity { return ITEM_RARITIES[id]; }
-export type ItemKind = 'scrap' | 'component' | 'part' | 'module' | 'upgrade' | 'drone' | 'relic' | 'tool' | 'equipment' | 'reagent';
+export type ItemKind = 'scrap' | 'component' | 'part' | 'module' | 'upgrade' | 'drone' | 'relic' | 'tool' | 'equipment' | 'reagent' | 'consumable';
 export type EquipSlot = 'drone' | 'module' | 'upgrade' | 'relic' | 'tool' | 'head' | 'body' | 'hands' | 'feet' | 'accessory';
 export type ItemBag = Partial<Record<ItemId, number>>;
 
@@ -51,7 +53,7 @@ export interface ItemDef {
   sell: number;
   dismantle?: ItemBag;
   slot?: EquipSlot;
-  stats?: Partial<{ combate: number; extracao: number; defesa: number; vida: number; sorte: number }>;
+  stats?: Partial<{ combate: number; extracao: number; defesa: number; vida: number; sorte: number; mana: number }>;
   rarity?: 'comum' | 'incomum' | 'raro' | 'relíquia';
 }
 
@@ -68,19 +70,21 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   mod_cargo: { id: 'mod_cargo', name: 'Compartimento de Carga', kind: 'upgrade', slot: 'upgrade', sell: 20, dismantle: { gear: 2, scrap: 4 }, desc: '+6 de carga na extração.' },
   drone_spark: { id: 'drone_spark', name: 'Drone Faísca', kind: 'drone', slot: 'drone', sell: 0, desc: 'Seu drone reparado. Luta ao seu lado e faz extrações.' },
   relic_crane_coil: { id: 'relic_crane_coil', name: 'Bobina do Guindaste', kind: 'relic', slot: 'relic', sell: 25, dismantle: { cable: 3, gear: 2 }, desc: 'Equipada: Pulso Magnético com +50% de alcance. Na oficina: vira o Módulo Magnético.' },
-  relic_capacitor: { id: 'relic_capacitor', name: 'Capacitor Antigo', kind: 'relic', slot: 'relic', sell: 40, dismantle: { cell: 1, cable: 2 }, desc: 'Equipado: Arco Elétrico salta em +2 alvos.' },
+  relic_capacitor: { id: 'relic_capacitor', name: 'Capacitor Antigo', kind: 'relic', slot: 'relic', sell: 40, dismantle: { cell: 1, cable: 2 }, desc: 'Equipado: Arco Elétrico salta em +2 alvos.', stats: { mana: 15 } },
   tool_wrench_old: { id: 'tool_wrench_old', name: 'Chave Inglesa Gasta', kind: 'tool', slot: 'tool', sell: 2, desc: 'A ferramenta que trouxe para o pátio.', stats: { combate: 10, extracao: 2 } },
   tool_wrench_reinforced: { id: 'tool_wrench_reinforced', name: 'Chave Inglesa Reforçada', kind: 'tool', slot: 'tool', sell: 18, desc: 'Mandíbula endurecida para metal pesado.', stats: { combate: 14, extracao: 3 } },
   tool_hydraulic_pry: { id: 'tool_hydraulic_pry', name: 'Pé-de-cabra Hidráulico', kind: 'tool', slot: 'tool', sell: 22, desc: 'Menos dano, muita força de extração.', stats: { combate: 9, extracao: 6 } },
-  head_scrap_cap: { id: 'head_scrap_cap', name: 'Boné de Sucateiro', kind: 'equipment', slot: 'head', sell: 8, desc: 'Proteção leve contra lascas.', stats: { defesa: 1, sorte: 1 } },
+  head_scrap_cap: { id: 'head_scrap_cap', name: 'Boné de Sucateiro', kind: 'equipment', slot: 'head', sell: 8, desc: 'Proteção leve contra lascas.', stats: { defesa: 1, sorte: 1, mana: 5 } },
   body_work_jacket: { id: 'body_work_jacket', name: 'Jaqueta de Trabalho', kind: 'equipment', slot: 'body', sell: 12, desc: 'Forrada para o turno longo.', stats: { defesa: 3, vida: 8 } },
   hands_grip_gloves: { id: 'hands_grip_gloves', name: 'Luvas de Aderência', kind: 'equipment', slot: 'hands', sell: 9, desc: 'Seguram ferramentas e cabos.', stats: { extracao: 1, defesa: 1 } },
   feet_rail_boots: { id: 'feet_rail_boots', name: 'Botas de Trilho', kind: 'equipment', slot: 'feet', sell: 10, desc: 'Sola grossa sobre sucata.', stats: { defesa: 2 } },
-  accessory_lucky_bolt: { id: 'accessory_lucky_bolt', name: 'Parafuso da Sorte', kind: 'equipment', slot: 'accessory', sell: 15, desc: 'Um parafuso que sempre cai de pé.', stats: { sorte: 2 } },
+  accessory_lucky_bolt: { id: 'accessory_lucky_bolt', name: 'Parafuso da Sorte', kind: 'equipment', slot: 'accessory', sell: 15, desc: 'Um parafuso que sempre cai de pé.', stats: { sorte: 2, mana: 10 } },
   ether_shard: { id: 'ether_shard', name: 'Fragmento de Éter', kind: 'reagent', sell: 14, desc: 'Energia cristalizada da colônia. Base da Ferromancia.' },
   reagent_ember: { id: 'reagent_ember', name: 'Pó de Brasa', kind: 'reagent', sell: 3, desc: 'Sucata calcinada com cobre. Alimenta a Lança de Brasa.' },
   reagent_ward: { id: 'reagent_ward', name: 'Sal de Ferro', kind: 'reagent', sell: 3, desc: 'Cristais de ferro que endurecem ao toque rúnico. Alimenta a Égide.' },
   reagent_lodestone: { id: 'reagent_lodestone', name: 'Limalha Imantada', kind: 'reagent', sell: 5, desc: 'Limalha carregada de Éter. Alimenta o Chamado Imantado.' },
+  ether_crystal: { id: 'ether_crystal', name: 'Cristal de Éter', kind: 'consumable', sell: 30, desc: 'Éter puro e denso. Ao usar: +5 de mana máxima, para sempre.' },
+  mana_flask: { id: 'mana_flask', name: 'Frasco de Éter', kind: 'consumable', sell: 6, desc: 'Éter diluído em frasco. Ao usar: recupera 30 de mana.' },
 };
 
 export const KIND_LABEL: Record<ItemKind, string> = {
@@ -94,4 +98,5 @@ export const KIND_LABEL: Record<ItemKind, string> = {
   tool: 'Ferramenta',
   equipment: 'Equipamento',
   reagent: 'Reagente',
+  consumable: 'Consumível',
 };

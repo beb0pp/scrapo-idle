@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { activeSynergies, costText, ferroMods } from '../core/progression';
-import { castProblem, castSpell, discover, recruit, recruitProblem, slotOf, spellCooldownMs, spellPower, type SpellCooldowns } from '../core/spells';
+import { levelOf, manaRegen, maxMana, OUT_OF_COMBAT_MS, useItem } from '../core/mana';
+import { castProblem, castSpell, discover, recruit, recruitProblem, slotOf, spellCooldownMs, spellPower, EMPOWER_MUL, type ManaHolder, type SpellCooldowns } from '../core/spells';
 import { addItems, hasItems } from '../core/state';
 import { ALLIES, SPELLS, type FerroMods, type SpellId } from '../data/ferromancy';
 import { ITEMS, RARITY, rarityOf, type ItemBag, type ItemId } from '../data/items';
 import { PILE_RESPAWN_MS, session } from '../session';
-import { flashSpellSlot, onSpellClick, setSpellCooldowns } from '../ui/ferroHud';
+import { flashSpellSlot, onSpellClick, setLevel, setMana, setSpellCooldowns } from '../ui/ferroHud';
 import { modal, toast } from '../ui/ui';
 import { Cobalto, type AllyTarget } from './ally';
 import type { Crane, Enemy } from './enemies';
@@ -42,6 +43,8 @@ export interface FerroApi {
   tileFree(tx: number, ty: number): boolean;
   mapSize: { w: number; h: number };
   markManual(): void;
+  /** Scene ms since the hero last took damage. */
+  sinceHurt(): number;
 }
 
 /** WorldScene members the adapter reads. Kept in one place so an upstream rename breaks here only. */
@@ -57,6 +60,7 @@ interface FerroHost extends Phaser.Scene {
   interactables: FerroInteractable[];
   searching: { until: number; total: number; finish: () => void } | null;
   lastManual: number;
+  lastHurt: number;
   collision: Phaser.Tilemaps.TilemapLayer;
   tileBlocked(x: number, y: number): boolean;
   attractPickups(x: number, y: number, r: number): void;
@@ -97,6 +101,7 @@ export function ferroApi(scene: Phaser.Scene): FerroApi {
     tileFree: (tx, ty) => !h.tileBlocked(tx, ty),
     mapSize: { w: h.collision.layer.width, h: h.collision.layer.height },
     markManual: () => { h.lastManual = h.time.now; },
+    sinceHurt: () => h.time.now - h.lastHurt,
   };
 }
 
@@ -111,6 +116,7 @@ const CURSOR_PICK = 24;
 const AUTO_EVERY = 300;
 const HUD_EVERY = 100;
 const VEIN_MS = 1000;
+const CRYSTAL_CHANCE = 0.12;
 
 interface Vein { key: string; x: number; y: number; sprite: Phaser.GameObjects.Sprite; ready: boolean }
 
@@ -118,9 +124,23 @@ const dist = (a: Pt, b: Pt) => Phaser.Math.Distance.Between(a.x, a.y, b.x, b.y);
 
 /** Cooldowns survive map changes and respawns: they run on the wall clock, not the scene clock. */
 const sharedCooldowns: SpellCooldowns = {};
+/** Runtime mana (never saved): survives map changes like the cooldowns, starts full. */
+const sharedMana: ManaHolder = { value: -1 };
+
+function fillManaOnce(): void {
+  if (sharedMana.value < 0) sharedMana.value = maxMana(session.state);
+}
+
+/** Inventory "Usar": Cristal de Éter and Frasco de Éter. */
+export function useManaItem(id: 'ether_crystal' | 'mana_flask'): void {
+  fillManaOnce();
+  const res = session.run((s) => useItem(s, id, sharedMana));
+  toast(res.msg, res.ok ? 'loot' : 'warn');
+}
 
 export class FerroController {
   readonly cds: SpellCooldowns = sharedCooldowns;
+  readonly mana: ManaHolder = sharedMana;
   ally: Cobalto | null = null;
   shield = 0;
   searchBonus = false;
@@ -134,11 +154,16 @@ export class FerroController {
   private cachedMods: FerroMods;
   private autoAt = 0;
   private hudAt = 0;
+  private level: number;
+  /** Regen runs on the wall clock, like the cooldowns: frame deltas are capped and under-count. */
+  private manaAt = Date.now();
 
   constructor(api: FerroApi) {
     this.api = api;
     this.scene = api.scene;
     this.cachedMods = ferroMods(session.state);
+    this.level = levelOf(session.state).level;
+    fillManaOnce();
     this.keys = this.scene.input.keyboard!.addKeys('Z,X,C') as FerroController['keys'];
     onSpellClick((slot) => {
       this.api.markManual();
@@ -147,6 +172,7 @@ export class FerroController {
     const off = session.onChange(() => {
       this.cachedMods = ferroMods(session.state);
       this.syncParty();
+      this.checkLevel();
     });
     this.scene.events.once('shutdown', () => {
       off();
@@ -186,8 +212,15 @@ export class FerroController {
     }
     if (this.shield > 0 && time >= this.shieldUntil) this.breakShield();
     for (const v of this.veins) this.refreshVein(v);
+    const max = maxMana(session.state);
+    const now = Date.now();
+    const regen = manaRegen(this.api.sinceHurt() >= OUT_OF_COMBAT_MS);
+    sharedMana.value = Math.min(max, sharedMana.value + (regen * (now - this.manaAt)) / 1000);
+    this.manaAt = now;
     if (time - this.hudAt >= HUD_EVERY) {
       this.hudAt = time;
+      setMana(sharedMana.value, max);
+      setLevel(levelOf(session.state));
       setSpellCooldowns(session.state.ferro.loadout.map((id) => (id ? Math.max(0, ((this.cds[id] ?? 0) - Date.now()) / spellCooldownMs(session.state, id)) : 0)));
     }
   }
@@ -205,14 +238,14 @@ export class FerroController {
       if (!auto) toast('Nenhum alvo ao alcance.', 'warn');
       return false;
     }
-    const res = castSpell(session.state, this.cds, id, Date.now());
+    const res = castSpell(session.state, this.cds, id, Date.now(), sharedMana);
     if (!res.ok) {
       if (!auto) toast(res.msg, 'warn');
       return false;
     }
     session.commit();
     flashSpellSlot(slot);
-    this.playSpell(id, target);
+    this.playSpell(id, target, res.empowered);
     return true;
   }
 
@@ -236,7 +269,7 @@ export class FerroController {
     const s = session.state;
     const hero = this.api.hero();
     s.ferro.loadout.forEach((id, slot) => {
-      if (!id || castProblem(s, this.cds, id, Date.now())) return;
+      if (!id || castProblem(s, this.cds, id, Date.now(), sharedMana)) return;
       if (this.wants(id, hero)) this.cast(slot, true);
     });
   }
@@ -265,11 +298,18 @@ export class FerroController {
     return inRange.sort(byDist(hero))[0];
   }
 
-  private playSpell(id: SpellId, target: AllyTarget | null): void {
+  private checkLevel(): void {
+    const { level } = levelOf(session.state);
+    if (level <= this.level) return;
+    this.level = level;
+    toast(`Nível ${level}! +5 de mana máxima.`, 'loot');
+  }
+
+  private playSpell(id: SpellId, target: AllyTarget | null, empowered: boolean): void {
     const scene = this.scene;
     const hero = this.api.hero();
     const caster = this.api.caster;
-    const power = spellPower(session.state, id);
+    const power = spellPower(session.state, id, empowered);
     if (id === 'spell_ember' && target) {
       const to = { x: target.x, y: target.y - 4 };
       playEmber(scene, caster, { x: hero.x, y: hero.y - 14 }, to, () => {
@@ -287,7 +327,7 @@ export class FerroController {
       });
       this.bubble = bubble;
     } else if (id === 'spell_lodestone') {
-      const radius = SPELLS.spell_lodestone.range + this.mods.pickupRadius;
+      const radius = (SPELLS.spell_lodestone.range + this.mods.pickupRadius) * (empowered ? EMPOWER_MUL : 1);
       playLodestone(scene, caster, hero, radius, () => {
         const at = this.api.hero();
         this.api.attractPickups(at.x, at.y, radius);
@@ -356,6 +396,7 @@ export class FerroController {
     if (!this.veinReady(v.key)) return;
     session.searchedPiles.set(v.key, Date.now());
     const bag: ItemBag = { ether_shard: Math.random() < 0.3 ? 2 : 1, scrap: Phaser.Math.Between(1, 2) };
+    if (Math.random() < CRYSTAL_CHANCE) bag.ether_crystal = 1;
     let first = false;
     session.recordFinds(bag, 'Veio de Éter');
     session.mutate((s) => {

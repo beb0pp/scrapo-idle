@@ -11,7 +11,7 @@ export type SkillNodeId =
   | 's_mag_init' | 's_mag_ward' | 's_mag_lode' | 's_mag_channel';
 export type NodeId = BuildNodeId | SkillNodeId;
 export type SpellId = 'spell_ember' | 'spell_ward' | 'spell_lodestone';
-export type TransmuteId = 't_ember' | 't_ward' | 't_lodestone';
+export type TransmuteId = 't_ember' | 't_ward' | 't_lodestone' | 't_flask';
 export type DiscoveryId = 'ether_vein' | 'automaton';
 export type AllyId = 'cobalto';
 export type MemberId = 'ferrugem' | AllyId;
@@ -139,6 +139,9 @@ export interface SpellDef {
   id: SpellId;
   name: string;
   school: SpellSchool;
+  /** Mana paid on every cast. */
+  mana: number;
+  /** Optional reforço: consumed when in stock for +50% power. */
   cost: ItemBag;
   cooldownMs: number;
   target: SpellTarget;
@@ -153,17 +156,17 @@ export interface SpellDef {
 
 export const SPELLS: Record<SpellId, SpellDef> = {
   spell_ember: {
-    id: 'spell_ember', name: 'Lança de Brasa', school: 'ataque', cost: { reagent_ember: 1 }, cooldownMs: 6000,
+    id: 'spell_ember', name: 'Lança de Brasa', school: 'ataque', mana: 12, cost: { reagent_ember: 1 }, cooldownMs: 6000,
     target: 'enemy', range: 150, power: 24, color: 0xf08a3a,
     effect: 'Crava uma lança de brasa no inimigo mais próximo (ou sob o cursor): 24 de dano e respingo em volta.',
   },
   spell_ward: {
-    id: 'spell_ward', name: 'Égide de Ferro', school: 'defesa', cost: { reagent_ward: 1 }, cooldownMs: 15000,
+    id: 'spell_ward', name: 'Égide de Ferro', school: 'defesa', mana: 18, cost: { reagent_ward: 1 }, cooldownMs: 15000,
     target: 'self', range: 0, power: 40, durationMs: 6000, color: 0x5fd0d8,
     effect: 'Escudo rúnico que absorve 40 de dano por 6 s.',
   },
   spell_lodestone: {
-    id: 'spell_lodestone', name: 'Chamado Imantado', school: 'extracao', cost: { reagent_lodestone: 1 }, cooldownMs: 12000,
+    id: 'spell_lodestone', name: 'Chamado Imantado', school: 'extracao', mana: 10, cost: { reagent_lodestone: 1 }, cooldownMs: 12000,
     target: 'area', range: 170, power: 1, color: 0xb48ae6,
     effect: 'Puxa todos os achados num raio de 170 px e a próxima pilha vasculhada rende um achado extra.',
   },
@@ -172,12 +175,13 @@ export const SPELLS: Record<SpellId, SpellDef> = {
 export const SPELL_IDS = Object.keys(SPELLS) as SpellId[];
 export const SPELL_KEYS = ['Z', 'X', 'C'] as const;
 
-export interface TransmuteDef { id: TransmuteId; name: string; inputs: ItemBag; output: 'reagent_ember' | 'reagent_ward' | 'reagent_lodestone'; qty: number }
+export interface TransmuteDef { id: TransmuteId; name: string; inputs: ItemBag; output: 'reagent_ember' | 'reagent_ward' | 'reagent_lodestone' | 'mana_flask'; qty: number }
 
 export const TRANSMUTES: Record<TransmuteId, TransmuteDef> = {
   t_ember: { id: 't_ember', name: 'Pó de Brasa', inputs: { scrap: 4, cable: 1 }, output: 'reagent_ember', qty: 2 },
   t_ward: { id: 't_ward', name: 'Sal de Ferro', inputs: { scrap: 4, gear: 1 }, output: 'reagent_ward', qty: 2 },
   t_lodestone: { id: 't_lodestone', name: 'Limalha Imantada', inputs: { scrap: 3, ether_shard: 1 }, output: 'reagent_lodestone', qty: 3 },
+  t_flask: { id: 't_flask', name: 'Frasco de Éter', inputs: { scrap: 2, ether_shard: 1 }, output: 'mana_flask', qty: 2 },
 };
 
 export interface AllyDef {

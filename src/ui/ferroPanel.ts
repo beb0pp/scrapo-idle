@@ -18,7 +18,7 @@ import './ferro.css';
 export type FerroTab = 'build' | 'skill' | 'grimoire' | 'party';
 
 const TABS: Array<[FerroTab, string]> = [['build', 'Construção'], ['skill', 'Habilidades'], ['grimoire', 'Grimório'], ['party', 'Equipe']];
-const REAGENTS: ItemId[] = ['ether_shard', 'reagent_ember', 'reagent_ward', 'reagent_lodestone'];
+const REAGENTS: ItemId[] = ['ether_shard', 'reagent_ember', 'reagent_ward', 'reagent_lodestone', 'mana_flask', 'ether_crystal'];
 const SCHOOL_LABEL: Record<SpellSchool, string> = { ataque: 'Ataque', defesa: 'Defesa', extracao: 'Extração' };
 const TARGET_LABEL: Record<SpellTarget, string> = { enemy: 'Alvo', self: 'Si mesmo', area: 'Área' };
 const TARGET_GLYPH: Record<SpellTarget, string> = { enemy: '◎', self: '⛨', area: '◌' };
@@ -301,9 +301,9 @@ function transmutes(state: GameState): string {
   return `${hint}<div class="fe-recipes">${rows}</div>`;
 }
 
-function costBag(state: GameState, bag: ItemBag): string {
+function reforco(state: GameState, bag: ItemBag): string {
   return (Object.entries(bag) as [ItemId, number][]).map(([id, qty]) =>
-    `<span class="fe-sstat${countOf(state, id) < qty ? ' is-short' : ''}" title="Custo: ${qty}× ${esc(ITEMS[id].name)} (tem ${countOf(state, id)})">${icon(id)}×${qty}</span>`).join('');
+    `<span class="fe-sstat fe-reforco${countOf(state, id) < qty ? ' is-short' : ''}" title="Reforço opcional: ${qty}× ${esc(ITEMS[id].name)} para +50% (tem ${countOf(state, id)})">${icon(id)}×${qty} <small>+50%</small></span>`).join('');
 }
 
 function spellCard(state: GameState, id: SpellId, learned: boolean): string {
@@ -312,7 +312,7 @@ function spellCard(state: GameState, id: SpellId, learned: boolean): string {
   const keys = SPELL_KEYS.map((key, i) =>
     `<button class="fe-key${slot === i ? ' active' : ''}" aria-pressed="${slot === i}" data-act="f-equip:${id}:${i}" ${learned ? '' : 'disabled'} aria-label="Equipar ${esc(spell.name)} em ${key}">${key}</button>`).join('');
   const cd = (spellCooldownMs(state, id) / 1000).toFixed(1).replace('.', ',');
-  const stats = `${costBag(state, spell.cost)}<span class="fe-sstat" title="Recarga">⏱ ${cd} s</span>`
+  const stats = `<span class="fe-sstat fe-mana" title="Custo: ${spell.mana} de mana">◆ ${spell.mana}</span>${reforco(state, spell.cost)}<span class="fe-sstat" title="Recarga">⏱ ${cd} s</span>`
     + `<span class="fe-sstat" title="${TARGET_LABEL[spell.target]}">${TARGET_GLYPH[spell.target]}</span><span class="fe-sstat" title="Poder (${SCHOOL_LABEL[spell.school]})">✹ ${spellPower(state, id)}</span>`;
   const node = unlocker(id);
   const head = learned

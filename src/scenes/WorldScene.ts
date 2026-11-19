@@ -939,7 +939,7 @@ export class WorldScene extends Phaser.Scene {
     if (!c.damage(n)) return;
     this.pull = null;
     const first = !session.state.flags.boss_defeated;
-    this.relicDrop = first || Math.random() < 0.35 ? { relic_crane_coil: 1 } : { servo: 1, cable: 2, gear: 2 };
+    this.relicDrop = { ...(first || Math.random() < 0.35 ? { relic_crane_coil: 1 } : { servo: 1, cable: 2, gear: 2 }), ...(first ? { ether_crystal: 1 } : {}) };
     this.relic = this.add.sprite(c.sprite.x, c.sprite.y + 28, 'relic', 0).play('relic-pulse').setDepth(c.sprite.y + 30);
     if (!this.relicDrop.relic_crane_coil) this.relic.setTint(0xb8bcc4);
     toast('O Guindaste de Arrasto parou. Algo brilha entre os destroços.', 'loot');

@@ -67,6 +67,7 @@ function parseFerro(raw: unknown): FerroState {
     discovered: idList(f.discovered, DISCOVERY_TEXT),
     recruited,
     formation: { front, back },
+    manaBonus: typeof f.manaBonus === 'number' && Number.isFinite(f.manaBonus) && f.manaBonus > 0 ? Math.floor(f.manaBonus) : 0,
   };
 }
 

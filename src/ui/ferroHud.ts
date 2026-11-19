@@ -1,6 +1,8 @@
 import { spellIconUrls } from '../art/ferroArt';
 import { SPELL_KEYS, SPELLS } from '../data/ferromancy';
-import type { ItemId } from '../data/items';
+import { ITEMS, type ItemId } from '../data/items';
+import type { LevelInfo } from '../core/mana';
+import { canEmpower } from '../core/spells';
 import { countOf } from '../core/state';
 import { session } from '../session';
 import { $, esc, icon } from './shared';
@@ -9,6 +11,8 @@ import './ferro.css';
 
 let spellClick: (slot: number) => void = () => {};
 let fractions = [0, 0, 0];
+let manaNow = Infinity;
+let levelKey = '';
 
 export function onSpellClick(fn: (slot: number) => void): void {
   spellClick = fn;
@@ -24,6 +28,7 @@ export function initFerroHud(): void {
   bar.id = 'spellbar';
   bar.className = 'spellbar';
   $('hud').appendChild(bar);
+  injectVitals();
   bar.addEventListener('click', (event) => {
     const button = (event.target as HTMLElement).closest('button');
     if (!button) return;
@@ -41,6 +46,56 @@ export function initFerroHud(): void {
   renderSpellbar();
 }
 
+/** Mana under the HP bar plus the level badge, inside the existing .hud-top. */
+function injectVitals(): void {
+  const hp = document.querySelector('.hud-top .hp');
+  if (!hp || document.getElementById('mana-fill')) return;
+  const vitals = document.createElement('div');
+  vitals.className = 'vitals';
+  hp.replaceWith(vitals);
+  const mana = document.createElement('div');
+  mana.className = 'mana';
+  mana.innerHTML = '<span class="mana-gem" aria-hidden="true">◆</span><div class="bar mana-bar" role="meter" aria-label="Mana" aria-valuemin="0"><i id="mana-fill"></i></div><span id="mana-num"></span>'
+    + '<span class="lvl" id="lvl-badge" title="Nível">Nv 1</span><div class="bar xp-bar" role="meter" aria-label="Experiência" aria-valuemin="0"><i id="xp-fill"></i></div>';
+  vitals.append(hp, mana);
+}
+
+export function setMana(value: number, max: number): void {
+  manaNow = value;
+  const fill = document.getElementById('mana-fill');
+  if (fill) {
+    fill.style.width = `${max > 0 ? Math.min(100, (value / max) * 100) : 0}%`;
+    const meter = fill.parentElement!;
+    meter.setAttribute('aria-valuemax', String(max));
+    meter.setAttribute('aria-valuenow', String(Math.floor(value)));
+  }
+  const num = document.getElementById('mana-num');
+  if (num) num.textContent = `${Math.floor(value)}/${max}`;
+  const bar = document.getElementById('spellbar');
+  if (bar) applyMana(bar);
+}
+
+export function setLevel(info: LevelInfo): void {
+  const key = `${info.level}:${info.into}`;
+  if (key === levelKey) return;
+  levelKey = key;
+  const badge = document.getElementById('lvl-badge');
+  if (badge) badge.textContent = `Nv ${info.level}`;
+  const fill = document.getElementById('xp-fill');
+  if (!fill) return;
+  fill.style.width = `${info.need > 0 ? Math.min(100, (info.into / info.need) * 100) : 100}%`;
+  const meter = fill.parentElement!;
+  meter.setAttribute('aria-valuenow', String(info.into));
+  meter.setAttribute('aria-valuemax', String(info.need));
+  meter.title = info.need > 0 ? `XP ${info.into}/${info.need}` : 'Nível máximo';
+}
+
+function applyMana(bar: HTMLElement): void {
+  bar.querySelectorAll<HTMLElement>('[data-spell-id]').forEach((button) => {
+    button.classList.toggle('is-low', manaNow < SPELLS[button.dataset.spellId as keyof typeof SPELLS].mana);
+  });
+}
+
 function renderSpellbar(): void {
   const bar = document.getElementById('spellbar');
   if (!bar) return;
@@ -49,15 +104,19 @@ function renderSpellbar(): void {
     const id = state.ferro.loadout[slot];
     if (!id) return `<button class="spell-slot is-empty" data-spell-slot="${slot}" title="Vazio — clique para equipar um feitiço"><b>${key}</b><span class="spell-ico spell-ico--empty" aria-hidden="true">+</span><span>Equipar</span><i class="cd"></i></button>`;
     const spell = SPELLS[id];
-    const [reagent, qty] = Object.entries(spell.cost)[0] as [ItemId, number];
+    const reagent = Object.keys(spell.cost)[0] as ItemId;
     const have = countOf(state, reagent);
+    const boosted = canEmpower(state, id);
     const url = spellIconUrls[id];
     const art = url ? `<img class="spell-ico" src="${url}" alt="">` : '<span class="spell-ico" aria-hidden="true">✦</span>';
-    return `<button class="spell-slot${have < qty ? ' is-dry' : ''}" data-spell-slot="${slot}" title="${esc(spell.name)} (${key})" aria-label="${esc(spell.name)}, atalho ${key}, ${have} reagentes">`
-      + `<b>${key}</b>${art}<span>${esc(spell.name)}</span><em class="spell-qty">${icon(reagent, 'spell-reagent')}${have}</em><i class="cd"></i></button>`;
+    const boost = boosted ? `<em class="spell-boost" title="Reforçado: +50% (${have}× ${esc(ITEMS[reagent].name)})">${icon(reagent, 'spell-reagent')}✦</em>` : '';
+    const label = `${esc(spell.name)}, atalho ${key}, ${spell.mana} de mana${boosted ? `, reforçado (${have} reagentes)` : ''}`;
+    return `<button class="spell-slot${boosted ? ' is-boosted' : ''}" data-spell-slot="${slot}" data-spell-id="${id}" title="${esc(spell.name)} (${key})" aria-label="${label}">`
+      + `<b>${key}</b>${art}<span>${esc(spell.name)}</span><em class="spell-mana">◆${spell.mana}</em>${boost}<i class="cd"></i></button>`;
   }).join('');
   bar.innerHTML = `${slots}<button id="ferro-btn" class="spell-slot ferro-btn" title="Abrir Ferromancia (K)"><b>K</b><span class="spell-ico spell-ico--ferro" aria-hidden="true">⚗</span><span>Ferromancia</span></button>`;
   applyCooldowns(bar);
+  applyMana(bar);
 }
 
 function applyCooldowns(bar: HTMLElement): void {
