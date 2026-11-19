@@ -10,9 +10,12 @@ export type SkillNodeId =
   | 's_cmb_arm' | 's_cmb_dash' | 's_cmb_fury'
   | 's_ext_eye' | 's_ext_hands' | 's_ext_magnet'
   | 's_mag_init' | 's_mag_ward' | 's_mag_lode' | 's_mag_channel'
-  | 's_mag_haste' | 's_mag_net' | 's_mag_harvest';
+  | 's_mag_haste' | 's_mag_net' | 's_mag_harvest'
+  | 's_mag_arc' | 's_mag_crush' | 's_mag_acid';
 export type NodeId = BuildNodeId | SkillNodeId;
-export type SpellId = 'spell_ember' | 'spell_ward' | 'spell_lodestone' | 'spell_haste' | 'spell_net' | 'spell_harvest';
+export type SpellId =
+  | 'spell_ember' | 'spell_ward' | 'spell_lodestone' | 'spell_haste' | 'spell_net' | 'spell_harvest'
+  | 'spell_arc' | 'spell_crush' | 'spell_acid';
 export type TransmuteId = 't_ember' | 't_ward' | 't_lodestone' | 't_flask';
 export type DiscoveryId = 'ether_vein' | 'automaton';
 export type AllyId = 'cobalto';
@@ -144,6 +147,18 @@ export const SKILL_NODES: Record<SkillNodeId, NodeDef<SkillNodeId>> = {
     id: 's_mag_harvest', name: 'Colheita em Lote', branch: 'magia', col: 3, row: 3, requires: ['s_mag_haste'],
     cost: { points: 2, items: { ether_shard: 2 } }, effect: 'Aprende a Colheita em Lote (auxílio).', unlocksSpell: 'spell_harvest',
   },
+  s_mag_arc: {
+    id: 's_mag_arc', name: 'Arco Encadeado', branch: 'magia', col: 4, row: 1, requires: ['s_mag_init'],
+    cost: { points: 1 }, effect: 'Aprende o Arco Encadeado (ataque elétrico).', unlocksSpell: 'spell_arc',
+  },
+  s_mag_crush: {
+    id: 's_mag_crush', name: 'Prensa Magnética', branch: 'magia', col: 4, row: 2, requires: ['s_mag_arc', 's_mag_lode'],
+    cost: { points: 2 }, effect: 'Aprende a Prensa Magnética (ataque magnético).', unlocksSpell: 'spell_crush',
+  },
+  s_mag_acid: {
+    id: 's_mag_acid', name: 'Respingo Ácido', branch: 'magia', col: 4, row: 3, requires: ['s_mag_crush'],
+    cost: { points: 2, items: { ether_shard: 1 } }, effect: 'Aprende o Respingo Ácido (ataque corrosivo).', unlocksSpell: 'spell_acid',
+  },
 };
 
 export type SpellSchool = 'ataque' | 'defesa' | 'extracao' | 'auxilio';
@@ -200,6 +215,21 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     id: 'spell_harvest', name: 'Colheita em Lote', school: 'auxilio', mana: 30, cost: { reagent_lodestone: 2 }, cooldownMs: 75000,
     target: 'area', range: 120, power: 4, color: 0x9fd86a,
     effect: 'Vasculha na hora até 4 pilhas prontas num raio de 120 px.',
+  },
+  spell_arc: {
+    id: 'spell_arc', name: 'Arco Encadeado', school: 'ataque', mana: 14, cost: { reagent_ember: 1 }, cooldownMs: 7000,
+    target: 'enemy', range: 140, power: 18, color: 0x6f9cff, element: 'eletrico',
+    effect: 'Raio que salta do alvo para até 3 inimigos próximos: 18 de dano, 25% a menos a cada salto.',
+  },
+  spell_crush: {
+    id: 'spell_crush', name: 'Prensa Magnética', school: 'ataque', mana: 16, cost: { reagent_lodestone: 1 }, cooldownMs: 9000,
+    target: 'enemy', range: 130, power: 16, color: 0xe8506a, element: 'magnetico',
+    effect: 'Arrasta os inimigos num raio de 56 px até o alvo e os esmaga: 16 de dano, +25% por inimigo extra preso.',
+  },
+  spell_acid: {
+    id: 'spell_acid', name: 'Respingo Ácido', school: 'ataque', mana: 14, cost: { reagent_ward: 1 }, cooldownMs: 8000,
+    target: 'enemy', range: 150, power: 14, color: 0x3fd49a, element: 'corrosivo',
+    effect: 'Ácido que respinga 14 de dano em volta do alvo e deixa uma poça que corrói por 3 s.',
   },
 };
 

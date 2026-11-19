@@ -99,7 +99,9 @@ describe('trees', () => {
     }
     expect(s.ferro.built.length).toBe(Object.keys(BUILD_NODES).length);
     expect(s.ferro.learned.length).toBe(Object.keys(SKILL_NODES).length);
-    expect(unlockedSpells(s).sort()).toEqual(['spell_ember', 'spell_harvest', 'spell_haste', 'spell_lodestone', 'spell_net', 'spell_ward']);
+    expect(unlockedSpells(s).sort()).toEqual([
+      'spell_acid', 'spell_arc', 'spell_crush', 'spell_ember', 'spell_harvest', 'spell_haste', 'spell_lodestone', 'spell_net', 'spell_ward',
+    ]);
   });
 });
 

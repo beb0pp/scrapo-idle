@@ -282,6 +282,9 @@ const RUNES: [string, Geometry, RunePalette][] = [
   ['rune_ember', 'star', { ink: '#a8341e', main: '#f08a3a', hi: '#ffd27a', white: '#fff6e0' }],
   ['rune_ward', 'hexagram', { ink: '#2b7f88', main: '#5fd0d8', hi: '#b8f4f6', white: '#ffffff' }],
   ['rune_lode', 'squares', { ink: '#6f4fa6', main: '#b48ae6', hi: '#e8d8ff', white: '#ffffff' }],
+  ['rune_arc', 'star', { ink: '#2f4fa8', main: '#6f9cff', hi: '#cfe0ff', white: '#ffffff' }],
+  ['rune_crush', 'star', { ink: '#9a2038', main: '#e8506a', hi: '#ffc0cc', white: '#ffffff' }],
+  ['rune_acid', 'star', { ink: '#1e7a56', main: '#3fd49a', hi: '#c4ffe4', white: '#ffffff' }],
   ['rune_ember_w', 'star', PLAIN],
   ['rune_ward_w', 'hexagram', PLAIN],
   ['rune_lode_w', 'squares', PLAIN],
@@ -300,6 +303,9 @@ export function buildRuneArt(scene: Phaser.Scene): void {
   anim('rune-ember-spin', 'rune_ember', 4, 12);
   anim('rune-ward-spin', 'rune_ward', 4, 10);
   anim('rune-lode-spin', 'rune_lode', 4, 10);
+  anim('rune-arc-spin', 'rune_arc', 4, 14);
+  anim('rune-crush-spin', 'rune_crush', 4, 10);
+  anim('rune-acid-spin', 'rune_acid', 4, 12);
   anim('rune-ember-w-spin', 'rune_ember_w', 4, 10);
   anim('rune-ward-w-spin', 'rune_ward_w', 4, 10);
   anim('rune-lode-w-spin', 'rune_lode_w', 4, 10);
