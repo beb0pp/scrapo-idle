@@ -42,6 +42,23 @@ test('o nível sobrevive a recarregar a página', async ({ page }) => {
   await expect(badge(page)).toHaveText('10');
 });
 
+test('subir de nível durante a extração também toca o efeito, no drone', async ({ page }) => {
+  await seedSave(page, { xp: 21, equipped: { drone: 'drone_spark', module: 'mod_claw' }, flags: { drone_built: true } });
+  await enterWorld(page, 'patio');
+  await page.evaluate(() => {
+    const s = (window as any).__scrapo;
+    s.session.startAfk('afk_yard_edge');
+    s.game.scene.stop('World');
+    s.game.scene.start('Extraction');
+  });
+  await page.waitForFunction(() => (window as any).__scrapo.game.scene.isActive('Extraction'));
+  const children = () => page.evaluate(() => (window as any).__scrapo.game.scene.getScene('Extraction').children.length as number);
+  const before = await children();
+  expect(await page.evaluate(() => (window as any).__scrapo.grantXp(5))).toBe(1);
+  expect(await children()).toBeGreaterThan(before + 5);
+  await expect(levelToast(page, 2)).toBeVisible();
+});
+
 test('save antigo sem XP herda o nível das estatísticas', async ({ page }) => {
   // old formula: 12 kills × 10 + 10 searches × 4 = 160 XP → Nv 3 on the new curve
   await seedSave(page, { stats: { kills: 12, searches: 10 } });

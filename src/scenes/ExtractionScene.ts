@@ -3,6 +3,7 @@ import { TILES } from '../art/tileArt';
 import { attachDroneParts } from '../art/droneParts';
 import { computeProgress } from '../core/afk';
 import type { ItemBag, ItemId } from '../data/items';
+import { levelUpBurst } from '../game/vfx';
 import { session } from '../session';
 import { bagHtml, hideExtraction, modal, renderExtraction, showHud } from '../ui/ui';
 
@@ -89,6 +90,9 @@ export class ExtractionScene extends Phaser.Scene {
 
     const handlers = { onStop: () => this.stop(), onResume: () => this.resume(), onClaim: () => this.claim() };
     this.unsub = session.onChange(() => renderExtraction(handlers));
+    // AFK XP lands on claim, while this scene is still up: celebrate on the drone, the hero stand-in here
+    const offLevel = session.onLevelUp(() => levelUpBurst(this, { x: this.drone.x, y: this.drone.y }));
+    this.events.once('shutdown', offLevel);
     renderExtraction(handlers);
     this.input.keyboard!.on('keydown', (e: KeyboardEvent) => {
       if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) this.resume();
