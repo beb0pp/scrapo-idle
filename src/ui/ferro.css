@@ -237,3 +237,100 @@ body:has(#spellbar) #prompt { bottom: 156px; }
 .spell-slot b { font-size: 13px; }
 .spell-slot span { font-size: 11px; letter-spacing: 0.2px; text-shadow: 1px 0 0 #0c0a12, -1px 0 0 #0c0a12, 0 1px 0 #0c0a12; }
 .spell-slot { width: 74px; }
+/* mana and level readouts match the HP number */
+#mana-num { font-size: 15px; color: #d8e4ff; text-shadow: 1px 1px 0 #0c0a12, -1px 0 0 #0c0a12; }
+#lvl-badge { font-size: 13px; line-height: 20px; padding: 0 7px; }
+
+/* ---------- vitals panel: level medallion + HP / mana / XP ---------- */
+.hud-top > .vitals {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 5px;
+  background: rgba(20, 18, 30, 0.88);
+  border: 2px solid #4a3d2c;
+  box-shadow: inset 0 0 0 1px #8a6a3a, 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+.lvl-medal {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #ffe7a0, #e0b33a 55%, #9a6a1c);
+  border: 3px solid #1b1a24;
+  box-shadow: inset 0 0 0 2px #fff2b0, 0 0 0 2px #6b4a1e;
+  color: #2a1a10;
+  line-height: 1;
+}
+.lvl-medal small { font-size: 9px; letter-spacing: 1px; font-weight: 700; }
+.lvl-medal b { font-family: Verdana, 'Trebuchet MS', sans-serif; font-size: 20px; font-weight: 700; }
+.vit-bars { display: grid; gap: 4px; min-width: 190px; }
+.vit-bars .hp, .vit-bars .mana { display: flex; align-items: center; gap: 6px; margin: 0; }
+.vit-bars .hp-medallion { width: 22px; height: 22px; }
+.vit-bars .hp-heart { font-size: 15px; }
+.vit-bars .mana-gem { width: 22px; height: 18px; font-size: 12px; border-width: 2px; }
+.vit-bars .bar { position: relative; flex: 1; }
+.vit-bars .hp .hp-bar { width: auto; height: 20px; }
+.vit-bars .mana .mana-bar { width: auto; height: 16px; }
+.vit-bars #hp-num, .vit-bars #mana-num {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  font-size: 12px;
+  color: #fff;
+  text-shadow: 1px 0 0 #0c0a12, -1px 0 0 #0c0a12, 0 1px 0 #0c0a12, 0 -1px 0 #0c0a12;
+  pointer-events: none;
+}
+.vit-bars .xp { display: flex; align-items: center; gap: 6px; padding-left: 28px; }
+.vit-bars .xp .xp-bar { width: auto; height: 7px; padding: 1px; background: #1d2036; border: 2px solid #1b1a24; overflow: hidden; }
+.vit-bars .xp .xp-bar i { display: block; height: 100%; background: linear-gradient(to bottom, #fff2b0, #e0b33a); }
+#xp-num { font-family: Verdana, 'Trebuchet MS', sans-serif; font-size: 10px; font-weight: 700; color: #ffd27a; white-space: nowrap; }
+.hud-top:has(.vitals) ~ .objective { top: 92px; }
+
+/* ---------- backpack: level plate under the hero ---------- */
+#panel .mochila .mo-level {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: auto 64px;
+  grid-template-areas: 'lvl bar' 'lvl xp';
+  align-items: center;
+  column-gap: 6px;
+  padding: 3px 8px;
+  background: #2a1a14;
+  border: 2px solid #e0b33a;
+  border-radius: 8px;
+  color: #ffe7a0;
+  white-space: nowrap;
+}
+#panel .mochila .mo-level b { grid-area: lvl; font-family: Verdana, 'Trebuchet MS', sans-serif; font-size: 15px; }
+#panel .mochila .mo-level-bar { grid-area: bar; height: 6px; background: #1d2036; border: 1px solid #000; overflow: hidden; }
+#panel .mochila .mo-level-bar i { display: block; height: 100%; background: #e0b33a; }
+#panel .mochila .mo-level small { grid-area: xp; font-family: Verdana, 'Trebuchet MS', sans-serif; font-size: 9px; color: #d8c08a; }
+#panel .mochila .mo-doll .mo-stage { min-height: 196px; padding-bottom: 38px; }
+#panel .mochila .mo-level { bottom: 6px; }
+
+/* bigger bars; the number overlays the bar inside .bar-wrap */
+.vit-bars { min-width: 220px; gap: 5px; }
+.vit-bars .bar-wrap { position: relative; flex: 1; display: flex; }
+.vit-bars .bar-wrap > .bar { flex: 1; }
+.vit-bars .hp .hp-bar { height: 24px; }
+.vit-bars .mana .mana-bar { height: 22px; padding: 2px 3px; }
+.vit-bars #hp-num, .vit-bars #mana-num { font-size: 13px; line-height: 1; padding-right: 8px; }
+.vit-bars .xp .xp-bar { height: 8px; }
+#xp-num { font-size: 11px; }
+.lvl-medal { width: 52px; height: 52px; }
+.lvl-medal b { font-size: 22px; }
+.hud-top:has(.vitals) ~ .objective { top: 104px; }
+
+/* level plate: compact so it stays inside the hero stage outline */
+#panel .mochila .mo-level { grid-template-columns: auto 44px; column-gap: 5px; padding: 2px 6px; max-width: calc(100% - 16px); }
+#panel .mochila .mo-level b { font-size: 13px; }
+#panel .mochila .mo-level small { font-size: 8px; }

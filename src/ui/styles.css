@@ -685,7 +685,7 @@ body[data-inv-dock='left'] #objective { opacity: 0; }
 @keyframes area-banner-fade-out { to { opacity: 0; } }
 
 /* Pixelify's 2/5/8/9 blur together at small sizes: numbers use a plain bold face */
-#hp-num, #money, .money, .mo-qty, .mo-stat-val, .mo-cap {
+#hp-num, #money, .money, .mo-qty, .mo-stat-val, .mo-cap, #mana-num, #lvl-badge {
   font-family: Verdana, 'Trebuchet MS', sans-serif;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
