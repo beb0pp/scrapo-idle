@@ -122,17 +122,43 @@
 }
 
 #panel .mochila .mo-stat {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: 'glyph val' 'name name';
   align-items: center;
-  gap: 4px;
-  padding: 1px 8px;
-  border: 1px solid var(--line-brown);
-  border-radius: 10px;
-  background: var(--parch-hi);
-  font-size: 13px;
+  justify-items: center;
+  column-gap: 5px;
+  min-width: 58px;
+  padding: 3px 8px 2px;
+  border: 2px solid var(--line-brown);
+  border-radius: 8px;
+  background: #fff6df;
+  box-shadow: inset 0 -2px 0 rgba(107, 74, 46, 0.18);
+  color: #2a1a14;
+  cursor: help;
 }
 
-#panel .mochila .mo-stat b { color: #9b5a32; font-weight: normal; }
+#panel .mochila .mo-stat b {
+  grid-area: glyph;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--stat, #9b5a32);
+  color: #fffbe8;
+  font-size: 13px;
+  font-weight: normal;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+
+#panel .mochila .mo-stat-val { grid-area: val; font-size: 17px; font-weight: 700; letter-spacing: 0.5px; }
+#panel .mochila .mo-stat small { grid-area: name; font-size: 10px; color: #6b4a2e; text-transform: uppercase; letter-spacing: 0.6px; }
+#panel .mochila .mo-stat--combate { --stat: #b8432c; }
+#panel .mochila .mo-stat--extracao { --stat: #8a6a2a; }
+#panel .mochila .mo-stat--defesa { --stat: #3d6a8a; }
+#panel .mochila .mo-stat--vida { --stat: #c0394a; }
+#panel .mochila .mo-stat--sorte { --stat: #6b4fa0; }
 
 /* ---------- tiles: equipment slots and bag cells share one look ---------- */
 

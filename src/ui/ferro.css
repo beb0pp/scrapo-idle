@@ -170,8 +170,9 @@ kbd { font: inherit; color: var(--amber); background: var(--panel-2); border: 2p
 .fe-synergy.is-active .fe-badge { color: var(--ether); }
 
 /* HUD spellbar */
-.spellbar { position: absolute; bottom: 66px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
-#hud:has(#spellbar) #prompt { bottom: 124px; }
+.spellbar { position: absolute; bottom: 82px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+/* #prompt lives outside #hud: lift it above the spell bar (82 + 58 + gap) */
+body:has(#spellbar) #prompt { bottom: 148px; }
 .spell-slot { position: relative; width: 70px; height: 50px; padding: 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; background: rgba(27, 26, 36, 0.9); border-color: var(--ether-dk, #5b3f86); overflow: hidden; }
 .spell-slot b { position: absolute; top: 1px; left: 4px; color: #b48ae6; font-size: 12px; }
 .spell-slot span { font-size: 9px; line-height: 1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -199,7 +200,7 @@ kbd { font: inherit; color: var(--amber); background: var(--panel-2); border: 2p
 }
 
 @media (max-width: 640px) {
-  .spellbar { bottom: 64px; gap: 4px; }
+  .spellbar { bottom: 80px; gap: 4px; }
   .spell-slot { width: 58px; }
   .ferro-btn { min-width: 64px; }
   .fe-recipe { grid-template-columns: 1fr auto; }
@@ -208,3 +209,10 @@ kbd { font: inherit; color: var(--amber); background: var(--panel-2); border: 2p
   .fe-bslots { gap: 8px; }
   .fe-bslot > button:first-child { width: 64px; height: 64px; }
 }
+
+/* empty slots and the K button get a glyph so the bar reads as icons, like the skill bar below */
+.spell-slot { height: 58px; }
+.spell-ico--empty, .spell-ico--ferro { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font-size: 18px; line-height: 1; }
+.spell-ico--empty { border: 2px dashed rgba(180, 138, 230, 0.55); color: rgba(220, 200, 255, 0.75); }
+.spell-ico--ferro { background: radial-gradient(circle at 40% 35%, #c9a6ff, #5b3f86 70%); color: #fff8e6; box-shadow: 0 0 0 2px #2a1d40; }
+.spell-slot.is-empty:hover .spell-ico--empty { border-style: solid; color: #fff; }

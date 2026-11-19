@@ -47,7 +47,7 @@ function renderSpellbar(): void {
   const state = session.state;
   const slots = SPELL_KEYS.map((key, slot) => {
     const id = state.ferro.loadout[slot];
-    if (!id) return `<button class="spell-slot is-empty" data-spell-slot="${slot}" title="Vazio — clique para equipar um feitiço"><b>${key}</b><span>vazio</span><i class="cd"></i></button>`;
+    if (!id) return `<button class="spell-slot is-empty" data-spell-slot="${slot}" title="Vazio — clique para equipar um feitiço"><b>${key}</b><span class="spell-ico spell-ico--empty" aria-hidden="true">+</span><span>Equipar</span><i class="cd"></i></button>`;
     const spell = SPELLS[id];
     const [reagent, qty] = Object.entries(spell.cost)[0] as [ItemId, number];
     const have = countOf(state, reagent);
@@ -56,7 +56,7 @@ function renderSpellbar(): void {
     return `<button class="spell-slot${have < qty ? ' is-dry' : ''}" data-spell-slot="${slot}" title="${esc(spell.name)} (${key})" aria-label="${esc(spell.name)}, atalho ${key}, ${have} reagentes">`
       + `<b>${key}</b>${art}<span>${esc(spell.name)}</span><em class="spell-qty">${icon(reagent, 'spell-reagent')}${have}</em><i class="cd"></i></button>`;
   }).join('');
-  bar.innerHTML = `${slots}<button id="ferro-btn" class="spell-slot ferro-btn" title="Abrir Ferromancia (K)"><b>K</b><span>Ferromancia</span></button>`;
+  bar.innerHTML = `${slots}<button id="ferro-btn" class="spell-slot ferro-btn" title="Abrir Ferromancia (K)"><b>K</b><span class="spell-ico spell-ico--ferro" aria-hidden="true">⚗</span><span>Ferromancia</span></button>`;
   applyCooldowns(bar);
 }
 

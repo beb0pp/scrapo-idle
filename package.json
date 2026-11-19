@@ -10,7 +10,7 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "typecheck": "tsc --noEmit",
-    "e2e": "playwright test -c playwright.ferro.config.ts",
+    "e2e:ferro": "playwright test -c playwright.ferro.config.ts",
     "maps": "node tools/build-maps.ts"
   },
   "dependencies": {

@@ -131,6 +131,14 @@ const STAT_META = [
   ['combate', 'Combate', '⚔'], ['extracao', 'Extração', '⛏'], ['defesa', 'Defesa', '⛨'], ['vida', 'Vida', '♥'], ['sorte', 'Sorte', '✦'],
 ] as const;
 
+const STAT_HELP: Record<(typeof STAT_META)[number][0], string> = {
+  combate: 'Dano de cada golpe da chave inglesa.',
+  extracao: 'Cada ponto deixa o ciclo de extração do drone 0,25 s mais rápido.',
+  defesa: 'Cada ponto tira 1 de dano de cada golpe que você recebe.',
+  vida: 'Vida máxima: 100 mais o bônus do equipamento.',
+  sorte: 'Ainda sem efeito neste alpha; vai aumentar a chance de achados raros.',
+};
+
 function rarityTag(id: ItemId): string {
   const r = rarityOf(id);
   return `<span class="mo-tag" style="--rc:${RARITY[r].color}">${RARITY[r].label}</span>`;
@@ -156,7 +164,7 @@ function paperDoll(state: GameState): string {
 
 function statChips(stats: ReturnType<typeof playerStats>): string {
   return `<div class="mo-stats">${STAT_META.map(([key, label, glyph]) =>
-    `<span class="mo-stat" title="${label}"><b>${glyph}</b>${stats[key]}</span>`).join('')}</div>`;
+    `<span class="mo-stat mo-stat--${key}" title="${label}: ${STAT_HELP[key]}"><b aria-hidden="true">${glyph}</b><span class="mo-stat-val">${stats[key]}</span><small>${label}</small></span>`).join('')}</div>`;
 }
 
 function bagCell(state: GameState, id: ItemId): string {
