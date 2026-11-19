@@ -87,3 +87,61 @@ test('Nv 25: inimigos de outra região chegam escalados e com o nível à vista'
   expect(tags).toBe(list.length);
   await page.screenshot({ path: shot('area-2.png') });
 });
+
+test('em combate a viagem espera 5 s sem tomar nem dar dano', async ({ page }) => {
+  await seedSave(page, { xp: 0 });
+  expect(await travel(page, 'valas_de_lata')).toBe(true);
+  await waitForHunt(page);
+
+  const hit = await page.evaluate(() => {
+    const s = (window as any).__scrapo;
+    const w = s.world();
+    w.damageEnemy(w.enemies.find((e: any) => e.alive), 1);
+    return s.travel('valas_de_lata') as boolean;
+  });
+  expect(hit).toBe(false);
+  await expect(page.locator('#toasts .toast.warn', { hasText: 'Espere 5s sem tomar nem dar dano.' })).toBeVisible();
+
+  const hurt = await page.evaluate(() => {
+    const s = (window as any).__scrapo;
+    const w = s.world();
+    w.lastHit = null;
+    w.lastHurt = w.time.now - 3_500;
+    return s.travel('valas_de_lata') as boolean;
+  });
+  expect(hurt).toBe(false);
+  await expect(page.locator('#toasts .toast.warn', { hasText: 'Espere 2s sem tomar nem dar dano.' })).toBeVisible();
+
+  const free = await page.evaluate(() => {
+    const s = (window as any).__scrapo;
+    const w = s.world();
+    w.lastHit = w.time.now - 5_000;
+    w.lastHurt = w.time.now - 6_000;
+    return s.travel('valas_de_lata') as boolean;
+  });
+  expect(free).toBe(true);
+  await waitForHunt(page);
+});
+
+test('do Pátio a viagem nunca espera, mesmo logo após dano', async ({ page }) => {
+  await seedSave(page, { xp: 0 });
+  await openGame(page);
+  await page.evaluate(() => {
+    const s = (window as any).__scrapo;
+    s.game.scene.getScene('Title')?.clearTitleScreen?.();
+    s.warp('patio');
+  });
+  await page.waitForFunction(() => {
+    const s = (window as any).__scrapo;
+    return s.game.scene.isActive('World') && s.world().mapId === 'patio' && !!s.world().player?.body;
+  }, null, { timeout: 20_000 });
+  const ok = await page.evaluate(() => {
+    const s = (window as any).__scrapo;
+    const w = s.world();
+    w.lastHurt = w.time.now;
+    w.lastHit = w.time.now;
+    return s.travel('valas_de_lata') as boolean;
+  });
+  expect(ok).toBe(true);
+  await waitForHunt(page);
+});

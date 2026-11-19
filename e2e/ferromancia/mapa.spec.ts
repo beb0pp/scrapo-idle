@@ -108,3 +108,33 @@ test('lista ordena por nível e "Viajar" leva até a área', async ({ page }) =>
   }, null, { timeout: 20_000 });
   await expect(page.locator('#panel')).toBeHidden();
 });
+
+test('a área onde o herói está aparece como "Caçando" no mapa e na lista', async ({ page }) => {
+  await seedSave(page, { xp: 0 });
+  await enterWorld(page, 'patio');
+  await openMap(page);
+  await expect(win(page).locator('.mapw-here')).toHaveCount(0);
+  await win(page).locator('.mapw-mark[data-area="valas_de_lata"]').click();
+  await win(page).getByRole('button', { name: 'Viajar para Valas de Lata' }).click();
+  await page.waitForFunction(() => {
+    const w = (window as any).__scrapo.world();
+    return w.mapId === 'hunt' && !!w.player?.body && w.areaName === 'Valas de Lata';
+  }, null, { timeout: 20_000 });
+
+  await openMap(page);
+  const here = win(page).locator('.mapw-mark.is-here');
+  await expect(here).toHaveCount(1);
+  await expect(here).toHaveAttribute('data-area', 'valas_de_lata');
+  await expect(here.locator('.mapw-here')).toHaveText('Caçando');
+  await expect(here.locator('.mapw-here')).toBeVisible();
+  await expect(here).toHaveAttribute('aria-label', /caçando aqui/);
+  await bannerGone(page);
+  await page.screenshot({ path: shot('mapa-cacando.png') });
+
+  await win(page).getByRole('button', { name: 'Lista' }).click();
+  const row = win(page).locator('.mapw-table tr.is-here');
+  await expect(row).toHaveCount(1);
+  await expect(row).toHaveAttribute('data-row', 'valas_de_lata');
+  await expect(row.locator('.mapw-here')).toHaveText('Caçando');
+  await expect(row.getByRole('button', { name: 'Viajar para Valas de Lata' })).toBeEnabled();
+});

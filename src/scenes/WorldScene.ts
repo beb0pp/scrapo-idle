@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { arcJumps, droneReady, meleeElement, playerStats, pulseRadius } from '../core/derived';
 import { elementDamage } from '../core/elements';
+import type { CombatTimes } from '../core/combatLock';
 import { grantXp } from '../core/level';
 import type { ElementId } from '../data/elements';
 import { rollTable } from '../core/rng';
@@ -162,7 +163,8 @@ export class WorldScene extends Phaser.Scene {
   private removeDogParts: (() => void) | null = null;
   private shadow!: Phaser.GameObjects.Ellipse;
   private heroRing!: Phaser.GameObjects.Ellipse;
-  private lastHurt = 0;
+  private lastHurt: number | null = null;
+  private lastHit: number | null = null;
   private lastManual = -10_000;
   private autoNext = 0;
   private evadeUntil = 0;
@@ -775,7 +777,7 @@ export class WorldScene extends Phaser.Scene {
 
   /** Out of combat for 4 s: slow regeneration, so the hero can keep working on auto. */
   private regenerate(time: number, deltaMs: number): void {
-    if (time - this.lastHurt < 4000 || session.hp >= session.maxHp) return;
+    if ((this.lastHurt !== null && time - this.lastHurt < 4000) || session.hp >= session.maxHp) return;
     session.hp = Math.min(session.maxHp, session.hp + (deltaMs / 1000) * 3);
   }
 
@@ -1011,6 +1013,7 @@ export class WorldScene extends Phaser.Scene {
 
   private damageEnemy(e: Enemy, base: number, el: ElementId | null = null): void {
     if (!e.alive) return;
+    this.lastHit = this.time.now;
     const { amount: n, mul } = elementDamage(base, el, e.element);
     vfx.damageNumber(this, { x: e.x, y: e.y - 6 }, n, n >= 14, mul);
     if (e.damage(n, this.player.x, this.player.y)) {
@@ -1533,6 +1536,16 @@ export class WorldScene extends Phaser.Scene {
     this.pull = null;
     this.cameras.main.fadeOut(180, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.restart({ mapId: ex.target, entry: ex.entry }));
+  }
+
+  /** Hunt area the hero stands in (data/hunt id), or null outside the hunt. */
+  huntAreaId(): string | null {
+    if (this.mapId !== 'hunt') return null;
+    return this.mapProps.areaId?.replace(/^hunt:/, '') ?? null;
+  }
+
+  combatTimes(): CombatTimes & { now: number } {
+    return { now: this.time.now, hurtAt: this.lastHurt, hitAt: this.lastHit };
   }
 
   /** Debug/test hook: jump straight to a map. */
