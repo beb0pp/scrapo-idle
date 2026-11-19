@@ -1,10 +1,11 @@
-import { claimAfk, endAfk, finalizeAfterReload, settleFull, startAfk } from './core/afk';
+import { claimAfk, claimPending, endAfk, finalizeAfterReload, settleFull, startAfk } from './core/afk';
 import { playerStats } from './core/derived';
 import { levelOf } from './core/level';
 import { loadState, saveState, SAVE_KEY, type KeyValueStore } from './core/save';
 import { newGame, type AfkEndReason, type GameState } from './core/state';
 import type { Result } from './core/economy';
 import type { AfkAreaId } from './data/areas';
+import { BAG_FULL_MSG } from './data/bag';
 import type { ItemBag } from './data/items';
 
 type Listener = () => void;
@@ -119,6 +120,14 @@ export class Session {
     if (loot) this.recordFinds(loot, 'Extração');
     this.commit();
     return loot;
+  }
+
+  claimPending(): ItemBag | null {
+    const got = claimPending(this.state);
+    if (got) this.recordFinds(got, 'Extração');
+    else this.toast(`${BAG_FULL_MSG}.`, 'warn');
+    this.commit();
+    return got;
   }
 
   /** Runtime-only feed, deliberately bounded so the HUD never grows without limit. */

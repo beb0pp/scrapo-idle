@@ -5,6 +5,8 @@ import { grantXp } from '../core/level';
 import type { ElementId } from '../data/elements';
 import { rollTable } from '../core/rng';
 import { addItems } from '../core/state';
+import { addItemsCapped, bagFull, spaceFor } from '../core/bag';
+import { BAG_FULL_MSG } from '../data/bag';
 import { DECALS, TILES } from '../art/tileArt';
 import { PILE_TABLES } from '../data/areas';
 import { ITEMS, RARITY, rarityOf, type ItemBag, type ItemId } from '../data/items';
@@ -170,6 +172,7 @@ export class WorldScene extends Phaser.Scene {
   private autoFoeSkip = new Map<Enemy | 'crane', number>();
   private autoTarget: Interactable | null = null;
   private autoSkip = new Map<Interactable, number>();
+  private bagToastAt = 0;
   private holdMoveAt = 0;
 
   constructor() {
@@ -241,13 +244,12 @@ export class WorldScene extends Phaser.Scene {
       hero: () => ({ x: this.feetX, y: this.feetY }),
       enemies: () => (this.ferro?.dogFights() ?? true ? this.enemies : []),
       drops: () =>
-        this.pickups.map((p) => ({
+        this.pickups.filter((p) => this.hasRoom(p.item)).map((p) => ({
           x: p.sprite.x,
           y: p.sprite.y,
           take: () => {
-            if (!p.sprite.active) return;
+            if (!p.sprite.active || !this.collectPickup(p, 'Ferrugem')) return;
             this.pickups = this.pickups.filter((q) => q !== p);
-            this.collectPickup(p, 'Ferrugem');
           },
         })),
       bite: (target, dmg) => this.damageEnemy(target as Enemy, dmg),
@@ -721,7 +723,7 @@ export class WorldScene extends Phaser.Scene {
     const next = o.path[0];
     if (!next) {
       if (o.kind === 'use') {
-        if (Phaser.Math.Distance.Between(this.player.x, this.player.y, o.it.x, o.it.y) < o.it.r + 6) o.it.act();
+        if (Phaser.Math.Distance.Between(this.player.x, this.player.y, o.it.x, o.it.y) < o.it.r + 6) this.useInteractable(o.it);
         this.order = null;
       } else if (o.kind === 'move') this.order = null;
       return null;
@@ -733,7 +735,7 @@ export class WorldScene extends Phaser.Scene {
     }
     if (o.kind === 'use' && Phaser.Math.Distance.Between(this.player.x, this.player.y, o.it.x, o.it.y) < o.it.r - 4) {
       this.order = null;
-      o.it.act();
+      this.useInteractable(o.it);
       return null;
     }
     return v.normalize();
@@ -826,7 +828,8 @@ export class WorldScene extends Phaser.Scene {
     if (this.autoTarget?.label()) this.autoSkip.set(this.autoTarget, time + 20_000);
     this.autoTarget = null;
 
-    const drop = this.pickups.find((p) => dist(p.sprite.x, p.sprite.y) < 120);
+    const drop = this.pickups.find((p) => this.hasRoom(p.item) && dist(p.sprite.x, p.sprite.y) < 120);
+    const full = bagFull(session.state);
     if (drop) {
       this.moveTo(new Phaser.Math.Vector2(drop.sprite.x, drop.sprite.y), false);
       return;
@@ -835,7 +838,7 @@ export class WorldScene extends Phaser.Scene {
     let best: Interactable | null = null;
     let bestD = Infinity;
     for (const it of this.interactables) {
-      if (!it.auto || !it.label() || (this.autoSkip.get(it) ?? 0) > time) continue;
+      if (!it.auto || full || !it.label() || (this.autoSkip.get(it) ?? 0) > time) continue;
       if (lowHp && threats.some((e) => Phaser.Math.Distance.Between(e.x, e.y, it.x, it.y) < 100)) continue;
       const d = dist(it.x, it.y);
       if (d < bestD) (best = it), (bestD = d);
@@ -925,7 +928,26 @@ export class WorldScene extends Phaser.Scene {
     if (down(k.W)) this.arc();
     if (down(k.E)) this.dash();
     if (down(k.R)) this.overdrive();
-    if (down(k.F)) this.nearestInteractable()?.act();
+    if (down(k.F)) { const it = this.nearestInteractable(); if (it) this.useInteractable(it); }
+  }
+
+  /** Salvage jobs (auto-flagged) need bag room; everything else always runs. */
+  private useInteractable(it: Interactable): void {
+    if (it.auto && this.refuseFullBag()) return;
+    it.act();
+  }
+
+  private refuseFullBag(): boolean {
+    if (!bagFull(session.state)) return false;
+    if (this.time.now - this.bagToastAt > 2500) {
+      this.bagToastAt = this.time.now;
+      toast(BAG_FULL_MSG, 'warn');
+    }
+    return true;
+  }
+
+  private hasRoom(item: ItemId): boolean {
+    return spaceFor(session.state, item) > 0;
   }
 
   private nearestInteractable(): Interactable | null {
@@ -1021,10 +1043,12 @@ export class WorldScene extends Phaser.Scene {
     this.relic = null;
     const first = !session.state.flags.boss_defeated;
     session.recordFinds(this.relicDrop, 'Guindaste de Arrasto');
+    let left: ItemBag = {};
     session.mutate((s) => {
-      addItems(s, this.relicDrop);
+      left = addItemsCapped(s, this.relicDrop).left;
       s.flags.boss_defeated = true;
     });
+    this.dropLoot(this.feetX, this.feetY + 6, left);
     if (this.relicDrop.relic_crane_coil) {
       modal(
         `<h1>Bobina do Guindaste</h1><p>Uma bobina ainda quente, arrancada do ímã do guindaste.</p>
@@ -1243,23 +1267,26 @@ export class WorldScene extends Phaser.Scene {
     for (const p of this.pickups) if (Phaser.Math.Distance.Between(x, y, p.sprite.x, p.sprite.y) < r) p.born = -1;
   }
 
-  /** Puts a ground drop in the bag (picked by the hero or fetched by the robot dog). */
-  private collectPickup(p: WorldScene['pickups'][number], source: string): void {
+  /** Puts what fits of a ground drop in the bag; the rest stays on the ground. True once it is all picked. */
+  private collectPickup(p: WorldScene['pickups'][number], source: string): boolean {
+    const take = Math.min(p.qty, spaceFor(session.state, p.item));
+    if (take <= 0) return false;
     const r = RARITY[rarityOf(p.item)];
-    session.recordFinds({ [p.item]: p.qty }, source);
-    session.mutate((s) => addItems(s, { [p.item]: p.qty }));
-    toast(`+${p.qty} ${ITEMS[p.item].name} · ${r.label}`, 'loot', r.color);
+    session.recordFinds({ [p.item]: take }, source);
+    session.mutate((s) => addItems(s, { [p.item]: take }));
+    toast(`+${take} ${ITEMS[p.item].name} · ${r.label}`, 'loot', r.color);
+    p.qty -= take;
+    if (p.qty > 0) return false;
     p.sprite.destroy();
+    return true;
   }
 
   private updatePickups(time: number): void {
     const px = this.feetX, py = this.feetY - 4;
     this.pickups = this.pickups.filter((p) => {
+      if (!this.hasRoom(p.item)) return true;
       const d = Phaser.Math.Distance.Between(px, py, p.sprite.x, p.sprite.y);
-      if (d < 10) {
-        this.collectPickup(p, 'Chão');
-        return false;
-      }
+      if (d < 10) return !this.collectPickup(p, 'Chão');
       if ((p.born < 0 || d < 28 + this.ferro.mods.pickupRadius) && time - Math.max(0, p.born) > 250) {
         p.sprite.x += (px - p.sprite.x) * 0.15;
         p.sprite.y += (py - p.sprite.y) * 0.15;
@@ -1432,12 +1459,14 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private awardLoot(x: number, y: number, bag: ItemBag): void {
-    session.recordFinds(bag, 'Destroço');
+    let split = { added: {} as ItemBag, left: {} as ItemBag };
     session.mutate((s) => {
-      addItems(s, bag);
+      split = addItemsCapped(s, bag);
       s.stats.searches++;
     });
-    this.showLoot(x, y, bag);
+    session.recordFinds(split.added, 'Destroço');
+    this.showLoot(x, y, split.added);
+    this.dropLoot(x, y + 10, split.left);
   }
 
   private cancelSearch(): void {
@@ -1469,20 +1498,23 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private finishSearch(pile: Pile): void {
+    if (this.refuseFullBag()) return;
     session.searchedPiles.set(pile.id, Date.now());
     const firstWagon = pile.special === 'first_wagon' && !session.state.flags.first_wagon_looted;
     const table = PILE_TABLES[pile.loot] ?? PILE_TABLES.yard_pile;
     const bag: ItemBag = firstWagon ? { pulse_core: 1, gear: 1, cable: 1, scrap: 3 } : rollTable(Math.random, table.loot, table.rolls);
     if (!firstWagon && this.ferro.consumeSearchBonus()) for (const [id, n] of Object.entries(rollTable(Math.random, table.loot, 1)) as [ItemId, number][]) bag[id] = (bag[id] ?? 0) + n;
-    session.recordFinds(bag, firstWagon ? 'Primeiro vagão' : 'Pilha de sucata');
+    let split = { added: {} as ItemBag, left: {} as ItemBag };
     session.mutate((s) => {
-      addItems(s, bag);
+      split = addItemsCapped(s, bag);
       s.stats.searches++;
       grantXp(s, XP.search);
       if (firstWagon) s.flags.first_wagon_looted = true;
     });
+    session.recordFinds(split.added, firstWagon ? 'Primeiro vagão' : 'Pilha de sucata');
     this.refreshPile(pile);
-    this.showLoot(pile.x, pile.y - 6, bag);
+    this.showLoot(pile.x, pile.y - 6, split.added);
+    this.dropLoot(pile.x, pile.y + 10, split.left);
     if (firstWagon) {
       modal(
         '<h1>Núcleo Pulsante</h1><p>Sob as chapas do primeiro vagão, um núcleo de drone ainda bate como um coração.</p><p>Leve-o à <b>oficina do Pátio Zero</b>. Com um Módulo de Garra (2 engrenagens, 1 cabo, 4 sucatas) o seu drone volta a voar.</p>',

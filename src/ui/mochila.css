@@ -389,3 +389,8 @@
 /* gear overlays stacked exactly over the portrait */
 #panel .mochila .mo-hero-wrap { position: relative; display: inline-block; line-height: 0; }
 #panel .mochila .mo-hero-gear { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+
+#panel .mochila .mo-slots { padding: 0 6px; border-radius: 8px; }
+#panel .mochila .mo-bag.bag-warn .mo-slots { background: var(--amber); color: var(--ink-brown); }
+#panel .mochila .mo-bag.bag-full .mo-slots { background: var(--red); color: var(--ink-brown); }
+#panel .afk-pending .chips { margin: 4px 0; }
