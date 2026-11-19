@@ -22,20 +22,28 @@ const weakAreas = (page: Page, regionId: string, attack: string): Promise<string
     return hunt.areasIn(rid).filter((a: any) => hunt.areaElements(a).some((e: string) => weak.includes(e))).map((a: any) => a.id);
   }, [regionId, attack]);
 
-test('M abre o mapa; no Nv 1 só a primeira região abre e as outras pedem nível', async ({ page }) => {
+/** Hero level read from the live session, so tests do not hard-code the xp curve. */
+const heroLevel = (page: Page): Promise<number> =>
+  page.evaluate(async () => {
+    const level = await import('/src/core/level.ts' as string);
+    return level.levelOf((window as any).__scrapo.session.state).level as number;
+  });
+
+test('M abre o mapa no Mundo; no Nv 1 só a primeira região abre e as outras pedem nível', async ({ page }) => {
   await seedSave(page, { xp: 0 });
   await enterWorld(page, 'patio');
   await openMap(page);
   await expect(page.locator('#panel')).toHaveAttribute('data-dock-kind', 'map');
 
   const tabs = win(page).getByRole('tab');
-  await expect(tabs).toHaveCount(5);
+  await expect(tabs).toHaveCount(6);
+  await expect(tabs.first()).toHaveText(/Mundo/);
   await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
-  const foundry = win(page).locator('[data-region="fundicoes"]');
+  const foundry = win(page).locator('.mapw-tab[data-region="fundicoes"]');
   await expect(foundry).toBeDisabled();
   await expect(foundry).toHaveAttribute('title', 'Exige Nv 10');
-  await expect(win(page).locator('.mapw-mark')).toHaveCount(7);
-  await expect(win(page).locator('.mapw-foot')).toHaveText(/^7 de 7 áreas em Várzea da Ferrugem/);
+  await expect(win(page).locator('.mapw-mark')).toHaveCount(25);
+  await expect(win(page).locator('.mapw-foot')).toHaveText(/^25 de 25 áreas no Mundo/);
 
   await win(page).locator('.mapw-mark[data-area="corrego_ferro_velho"]').hover();
   await expect(win(page).locator('.mapw-tip')).toContainText('Ferro-Velho do Córrego');
@@ -50,13 +58,73 @@ test('M abre o mapa; no Nv 1 só a primeira região abre e as outras pedem níve
   await expect(page.locator('#panel')).toBeHidden();
   await page.locator('.skill.map-btn').click();
   await expect(win(page)).toBeVisible();
+  await win(page).locator('[data-region="varzea"]').click();
+  await expect(win(page).locator('.mapw-mark')).toHaveCount(7);
+  await expect(win(page).locator('.mapw-foot')).toHaveText(/^7 de 7 áreas em Várzea da Ferrugem/);
+});
+
+test('Mundo mostra as 25 áreas, apaga as bloqueadas e abre a região clicada', async ({ page }) => {
+  await seedSave(page, { xp: 5000 });
+  await enterWorld(page, 'patio');
+  await openMap(page);
+  const level = await heroLevel(page);
+  await expect(win(page).locator('.mapw-tab.is-on')).toHaveAttribute('data-region', 'mundo');
+  await expect(win(page)).toHaveAttribute('data-scope', 'world');
+
+  const marks = win(page).locator('.mapw-mark');
+  await expect(marks).toHaveCount(25);
+  const levels = await marks.evaluateAll((els) => els.map((e) => Number(e.querySelector('.mapw-lvl')!.textContent)));
+  const above = levels.filter((l) => l > level).length;
+  expect(above).toBeGreaterThan(0);
+  expect(above).toBeLessThan(25);
+  await expect(win(page).locator('.mapw-mark.is-above')).toHaveCount(above);
+  await expect(win(page).locator('.mapw-mark.is-above .mapw-lock')).toHaveCount(above);
+
+  const zones = win(page).locator('.mapw-zone');
+  await expect(zones).toHaveCount(5);
+  const docas = win(page).locator('.mapw-zone[data-zone="docas"]');
+  await expect(docas).toHaveClass(/is-locked/);
+  await expect(docas).toHaveAttribute('aria-disabled', 'true');
+  await expect(docas).toContainText('Docas Alagadas');
+  await expect(docas).toContainText('Nv 25');
+  await expect(docas.locator('svg')).toHaveCount(1);
+  await expect(win(page).locator('.mapw-zone[data-zone="varzea"]')).not.toHaveClass(/is-locked/);
+
+  await win(page).locator('.mapw-mark[data-area="cais_boias"]').click();
+  await expect(win(page).locator('.mapw-card')).toContainText('Cais das Boias');
+  await expect(win(page).locator('.mapw-card .mapw-go')).toBeDisabled();
+  await expect(win(page).locator('.mapw-card .mapw-go')).toHaveText('Exige Nv 30');
+  await win(page).locator('.mapw-mark[data-area="valas_de_lata"]').click();
+  await expect(win(page).getByRole('button', { name: 'Caçar em Valas de Lata' })).toBeEnabled();
+  await page.mouse.move(5, 795);
+  await expect(win(page).locator('.mapw-tip')).toBeHidden();
+  await bannerGone(page);
+  await page.screenshot({ path: shot('mapa-mundi.png') });
+
+  const viewport = win(page).locator('.mapw-viewport');
+  await viewport.hover();
+  await page.mouse.wheel(0, -300);
+  await expect.poll(async () => Number(await viewport.getAttribute('data-scale'))).toBeGreaterThan(1);
+  await win(page).locator('[data-zoom="out"]').click();
+  await win(page).locator('[data-zoom="out"]').click();
+  await win(page).locator('[data-zoom="out"]').click();
+  await expect(viewport).toHaveAttribute('data-scale', '1.00');
+
+  await docas.click({ position: { x: 20, y: 12 }, force: true });
+  await expect(win(page)).toHaveAttribute('data-scope', 'world');
+  await win(page).locator('.mapw-zone[data-zone="fundicoes"]').click({ position: { x: 20, y: 12 } });
+  await expect(win(page).locator('.mapw-tab.is-on')).toHaveAttribute('data-region', 'fundicoes');
+  await expect(win(page)).toHaveAttribute('data-scope', 'region');
+  await expect(marks).toHaveCount(7);
+  await win(page).locator('[data-region="mundo"]').click();
+  await expect(marks).toHaveCount(25);
 });
 
 test('Térmico + "Fraco contra" mostra só áreas com inimigos Elétricos ou Magnéticos', async ({ page }) => {
   await seedSave(page, { xp: 5000 });
   await enterWorld(page, 'patio');
   await openMap(page);
-  await expect(win(page).locator('.mapw-tab.is-on')).toHaveAttribute('data-region', 'fundicoes');
+  await expect(win(page).locator('.mapw-tab.is-on')).toHaveAttribute('data-region', 'mundo');
   await win(page).locator('[data-region="varzea"]').click();
 
   await win(page).locator('.mapw-dd').click();
@@ -84,6 +152,7 @@ test('lista ordena por nível e "Caçar aqui" leva até a área', async ({ page 
   await seedSave(page, { xp: 5000 });
   await enterWorld(page, 'patio');
   await openMap(page);
+  await win(page).locator('[data-region="fundicoes"]').click();
   await win(page).locator('.mapw-mark[data-area="cadinho_rachado"]').click();
   await expect(win(page).locator('.mapw-card')).toContainText('Cadinho Rachado');
   await expect(win(page).locator('.mapw-card')).toContainText('Acima do seu nível');

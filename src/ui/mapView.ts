@@ -14,13 +14,16 @@ export interface MapView {
 
 /** Wheel zoom around the cursor and drag pan; fits the whole map at minimum zoom, centred on the short axis. */
 export function attachMapView(viewport: HTMLElement, world: HTMLElement): MapView {
-  let k = 1, x = 0, y = 0, rel = 1;
+  let k = 1, x = 0, y = 0, rel = 1, lastFit = 0;
   let dragged = false;
   const fit = () => Math.min(viewport.clientWidth / MAP_W, viewport.clientHeight / MAP_H) || 1;
   const clamp = (v: number, view: number, size: number) => (size <= view ? (view - size) / 2 : Math.min(0, Math.max(view - size, v)));
 
   const apply = () => {
     const min = fit();
+    // Viewport resized (detail card shown, dock moved): keep the zoom relative to the fit, not absolute.
+    if (lastFit && min !== lastFit) k = rel * min;
+    lastFit = min;
     k = Math.min(Math.max(k, min), min * MAX_ZOOM);
     rel = k / min;
     x = clamp(x, viewport.clientWidth, MAP_W * k);
@@ -68,7 +71,7 @@ export function attachMapView(viewport: HTMLElement, world: HTMLElement): MapVie
     viewport.addEventListener('pointercancel', up);
   });
 
-  new ResizeObserver(() => { k = fit() * rel; apply(); }).observe(viewport);
+  new ResizeObserver(apply).observe(viewport);
   k = fit();
   apply();
 

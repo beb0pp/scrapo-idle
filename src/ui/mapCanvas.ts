@@ -151,3 +151,79 @@ export function paintRegionMap(canvas: HTMLCanvasElement, region: Region, areas:
   ctx.strokeRect(PX / 2, PX / 2, MAP_W - PX, MAP_H - PX);
   return pal.water[0];
 }
+
+/** One region's footprint on the world map, in 0..1 units. */
+export interface WorldZoneShape { id: string; biome: BiomeId; rect: { x: number; y: number; w: number; h: number } }
+
+const WORLD_SEA: [string, string] = ['#14202a', '#1a2a36'];
+const BORDER = '#1b1922';
+
+/** Owner zone of each grid cell (index into zones), -1 for sea; zones swell from their rect with noisy coasts. */
+function worldOwners(zones: readonly WorldZoneShape[], patio: { x: number; y: number }, rng: Rng): Int8Array {
+  const coast = noise(rng, 20, 12);
+  const owners = new Int8Array(GW * GH).fill(-1);
+  for (let gy = 0; gy < GH; gy++) {
+    for (let gx = 0; gx < GW; gx++) {
+      const x = (gx + 0.5) / GW, y = (gy + 0.5) / GH;
+      let best = 0, owner = -1;
+      zones.forEach((z, i) => {
+        const hw = z.rect.w / 2, hh = z.rect.h / 2;
+        const dx = Math.abs(x - z.rect.x - hw) / hw, dy = Math.abs(y - z.rect.y - hh) / hh;
+        const v = 1.12 - (Math.max(dx, dy) + Math.hypot(dx, dy)) / 2 + (coast(x, y) - 0.5) * 0.4;
+        if (v > best) { best = v; owner = i; }
+      });
+      if (owner < 0 && Math.hypot((x - patio.x) * 1.6, y - patio.y) < 0.06) owner = 0;
+      owners[gy * GW + gx] = owner;
+    }
+  }
+  return owners;
+}
+
+/** Paints the world map: each region a biome-coloured land in one continent, a trail from the Pátio by level. */
+export function paintWorldMap(canvas: HTMLCanvasElement, zones: readonly WorldZoneShape[], patio: { x: number; y: number }): string {
+  canvas.width = MAP_W;
+  canvas.height = MAP_H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return WORLD_SEA[0];
+  const rng = mulberry32(mixSeed(seedOf('mundo'), 0x5ca1ab1e));
+  const owners = worldOwners(zones, patio, rng);
+  const tone = noise(rng, 30, 18);
+  const at = (gx: number, gy: number) => (gx < 0 || gy < 0 || gx >= GW || gy >= GH ? -1 : owners[gy * GW + gx]);
+  for (let gy = 0; gy < GH; gy++) {
+    for (let gx = 0; gx < GW; gx++) {
+      const o = at(gx, gy);
+      if (o < 0) { px(ctx, (gy + (gx >> 3)) % 7 === 0 ? WORLD_SEA[1] : WORLD_SEA[0], gx, gy); continue; }
+      const pal = PALETTES[zones[o].biome];
+      const near = [at(gx + 1, gy), at(gx - 1, gy), at(gx, gy + 1), at(gx, gy - 1)];
+      const t = tone(gx / GW, gy / GH);
+      const color = near.includes(-1) ? pal.shore : near.some((n) => n > o) ? BORDER : pal.land[t < 0.38 ? 2 : t > 0.62 ? 1 : 0];
+      px(ctx, color, gx, gy);
+    }
+  }
+  for (const z of zones) {
+    const pal = PALETTES[z.biome];
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(z.rect.x * MAP_W, z.rect.y * MAP_H, z.rect.w * MAP_W, z.rect.h * MAP_H);
+    ctx.clip();
+    paintBiome(ctx, z.biome, pal, rng);
+    ctx.restore();
+  }
+  const stops = [patio, ...zones.map((z) => ({ x: z.rect.x + z.rect.w / 2, y: z.rect.y + z.rect.h / 2 }))];
+  ctx.save();
+  ctx.globalAlpha = 0.6;
+  ctx.strokeStyle = '#e0b33a';
+  ctx.lineWidth = PX / 2;
+  ctx.setLineDash([PX * 2, PX * 2]);
+  ctx.beginPath();
+  stops.forEach((p, i) => (i ? ctx.lineTo(p.x * MAP_W, p.y * MAP_H) : ctx.moveTo(p.x * MAP_W, p.y * MAP_H)));
+  ctx.stroke();
+  ctx.restore();
+  px(ctx, '#e0b33a', Math.round(patio.x * GW) - 1, Math.round(patio.y * GH) - 1, 3, 3);
+  px(ctx, '#14121e', Math.round(patio.x * GW), Math.round(patio.y * GH));
+  ctx.strokeStyle = '#14121e';
+  ctx.lineWidth = PX;
+  ctx.strokeRect(PX / 2, PX / 2, MAP_W - PX, MAP_H - PX);
+  return WORLD_SEA[0];
+}
+

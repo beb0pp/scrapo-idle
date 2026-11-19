@@ -138,3 +138,24 @@
 .mapw-fc-el.is-resiste small { color: var(--red); }
 .mapw-fc-note { margin-left: auto; color: var(--muted); font-size: 11px; font-style: italic; }
 @media (max-width: 640px) { .mapw-card { flex-wrap: wrap; } .mapw-card .mapw-go { width: 100%; } }
+
+/* world view (Mundo tab): region zones under smaller area markers */
+.mapw-tab-world small { color: var(--cyan); }
+.mapw-zone { position: absolute; padding: 0; display: flex; justify-content: center; align-items: flex-start; background: transparent; border: 2px dashed transparent; box-shadow: none; cursor: pointer; }
+.mapw-zone:hover:not(.is-locked), .mapw-zone:focus-visible { border-color: var(--amber); background: rgba(224, 179, 58, 0.08); }
+.mapw-zone:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.mapw-zone.is-locked { cursor: not-allowed; background: rgba(12, 10, 18, 0.55); }
+.mapw-zone-plate { margin-top: 4px; display: flex; align-items: baseline; gap: 6px; padding: 2px 6px; background: rgba(27, 26, 36, 0.92); border: 2px solid var(--line); box-shadow: 0 0 0 2px var(--mapw-ink); transform: scale(calc(1 / var(--k, 1))); transform-origin: 50% 0; pointer-events: none; }
+.mapw-zone-plate b { font-size: 11px; line-height: 13px; color: var(--text); white-space: nowrap; }
+.mapw-zone-plate small { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; white-space: nowrap; color: var(--amber); }
+.mapw-zone-plate svg { width: 10px; height: 10px; }
+.mapw-zone:hover:not(.is-locked) .mapw-zone-plate { border-color: var(--amber); }
+.mapw-zone.is-locked .mapw-zone-plate { opacity: 0.75; }
+.mapw-zone.is-locked .mapw-zone-plate small { color: var(--muted); }
+.mapw[data-scope='world'] .mapw-mark { width: 24px; height: 24px; border-width: 2px; }
+.mapw[data-scope='world'] .mapw-mico { width: 16px; height: 16px; }
+.mapw[data-scope='world'] .mapw-lvl { right: -8px; bottom: -7px; min-width: 18px; font-size: 10px; line-height: 13px; }
+.mapw[data-scope='world'] .mapw-lock { top: -7px; right: -7px; width: 14px; height: 14px; }
+.mapw[data-scope='world'] .mapw-lock svg { width: 8px; height: 8px; }
+.mapw[data-scope='world'] .mapw-mark.is-above { opacity: 0.8; }
+.mapw-zone.is-locked:hover { border-color: transparent; }
