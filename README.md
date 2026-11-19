@@ -43,6 +43,7 @@ Não precisa de servidor nem de banco. O progresso fica no `localStorage` do nav
 
 - **Auto (`T`)**: o sucateiro desmonta a sucata alcançável mais próxima, recolhe o que cai e enfrenta inimigos por perto. Usa as mesmas habilidades e recargas do controle manual (Pulso com 2+ inimigos, Arco no alvo, Sobrecarga com drone), esquiva com a Investida quando um inimigo carrega um golpe (círculo vermelho) e recua com menos de 35% de vida. A vida regenera devagar após 4 s sem dano. Ainda dá para morrer.
 - Qualquer clique ou tecla assume o controle na hora; o Auto volta sozinho 3 s depois da última ação manual.
+- Com o Auto ligado, abrir a Mochila, o Mercado ou outro painel não pausa o jogo: ele continua explorando por trás. Avisos de história (modais) ainda pausam.
 - **Ferrugem**, o cão-robô, acompanha você desde o início: morde inimigos perto do herói e busca sucata caída para a mochila.
 
 ## Roteiro rápido de teste (≈10 min)

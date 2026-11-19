@@ -125,3 +125,24 @@ test('a version 1 save from an earlier build still loads', async ({ page }) => {
   expect(s.inventory.scrap).toBe(7);
   expect(s.equipped.tool).toBe('tool_wrench_old');
 });
+
+test('auto keeps exploring while a panel is open', async ({ page }) => {
+  const errors = trackErrors(page);
+  await enterGame(page);
+  await warp(page, 'yard');
+  await tap(page, 't');
+  await page.waitForTimeout(2000);
+  await tap(page, 'i');
+  await expect(page.locator('#panel .mochila')).toBeVisible();
+  const pos = () => page.evaluate(() => {
+    const w = (window as any).__scrapo.world();
+    const s = (window as any).__scrapo.session.state;
+    return { x: Math.round(w.feetX), y: Math.round(w.feetY), items: Object.values(s.inventory as Record<string, number>).reduce((a, b) => a + b, 0) };
+  });
+  const before = await pos();
+  await page.waitForTimeout(8000);
+  const after = await pos();
+  await expect(page.locator('#panel .mochila')).toBeVisible();
+  expect(after.x !== before.x || after.y !== before.y || after.items > before.items).toBe(true);
+  expect(errors).toEqual([]);
+});

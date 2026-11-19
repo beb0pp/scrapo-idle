@@ -435,9 +435,14 @@ export class WorldScene extends Phaser.Scene {
 
   // ---------------- loop ----------------
 
+  /** The world pauses for modals, and for panels only when auto mode is off (auto keeps exploring behind the market or backpack). */
+  private get frozen(): boolean {
+    return !document.getElementById('modal')!.hidden || (panelOpen() && !session.autoMode);
+  }
+
   update(time: number): void {
     const world = this.physics.world;
-    if (panelOpen() || this.transitioning) {
+    if (this.frozen || this.transitioning) {
       if (!world.isPaused) world.pause();
       this.anims.pauseAll();
       hudFrame({ area: this.areaName, cooldowns: [0, 0, 0, 0], prompt: null, boss: null });
@@ -451,7 +456,7 @@ export class WorldScene extends Phaser.Scene {
     this.regenerate(time, this.game.loop.delta);
     this.autoPlay(time);
     this.handleMovement(time);
-    this.handleActions(time);
+    if (!panelOpen()) this.handleActions(time);
     const t = this.target();
     for (const e of this.enemies) e.update(time, t);
     this.crane?.update(time);
@@ -699,7 +704,6 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
     this.modalSince = 0;
-    if (panelOpen()) return;
     const fx = this.feetX, fy = this.feetY;
     const dist = (x: number, y: number) => Phaser.Math.Distance.Between(fx, fy, x, y);
     const near = (r: number) => this.enemies.filter((e) => e.alive && dist(e.x, e.y) < r);
@@ -955,7 +959,7 @@ export class WorldScene extends Phaser.Scene {
 
   pulse(): void {
     const time = this.time.now;
-    if (time < this.ready.pulse || panelOpen()) return;
+    if (time < this.ready.pulse || this.frozen) return;
     this.ready.pulse = time + COOLDOWN.pulse;
     if (session.autoMode) session.autoLog.skills.pulse++;
     const r = pulseRadius(session.state);
@@ -974,7 +978,7 @@ export class WorldScene extends Phaser.Scene {
 
   arc(): void {
     const time = this.time.now;
-    if (time < this.ready.arc || panelOpen()) return;
+    if (time < this.ready.arc || this.frozen) return;
     const targets = this.hitTargets();
     const chain: typeof targets = [];
     let from = { x: this.player.x, y: this.player.y };
@@ -1007,7 +1011,7 @@ export class WorldScene extends Phaser.Scene {
   overdrive(): void {
     const time = this.time.now;
     const d = this.drone;
-    if (panelOpen() || time < this.ready.overdrive) return;
+    if (this.frozen || time < this.ready.overdrive) return;
     if (!d) {
       toast('Monte o drone na oficina para usar a Sobrecarga (R).', 'warn');
       return;
@@ -1039,7 +1043,7 @@ export class WorldScene extends Phaser.Scene {
   /** Dashes toward `toward`, else the held keys, else the mouse cursor. */
   dash(toward?: Phaser.Math.Vector2): void {
     const time = this.time.now;
-    if (time < this.ready.dash || panelOpen()) return;
+    if (time < this.ready.dash || this.frozen) return;
     this.ready.dash = time + COOLDOWN.dash;
     if (session.autoMode) session.autoLog.skills.dash++;
     const k = this.keys;
