@@ -1,6 +1,8 @@
 import { ITEMS } from '../data/items';
 import { skillIconUrls, type SkillIconId } from '../art/skillIcons';
 import { computeProgress } from '../core/afk';
+import { bagCapacity, bagLevel, bagSlotsUsed, type BagLevel } from '../core/bag';
+import { BAG_FULL_MSG } from '../data/bag';
 import { AFK_AREAS } from '../data/areas';
 import { session } from '../session';
 import { $, esc, icon } from './shared';
@@ -35,7 +37,7 @@ export function initHud(): void {
     </aside>
     <div id="map-view" hidden><div id="map-view-card"><div id="map-view-head"><h2>Mapa regional</h2><button id="map-close">Esc ✕</button></div><canvas id="map-view-canvas" width="720" height="480"></canvas><div class="map-legend"><span>Entrada</span><span>Extração</span><span>NPC</span><span>Chefe</span><span>Pilha</span></div></div></div>
     <div class="hud-bottom">
-      ${skillButton('Mochila', 'I', 'backpack', 'data-open="inventory"', 'inv')}
+      ${skillButton('Mochila', 'I', 'backpack', 'data-open="inventory"', 'inv', '<i class="bag-count" id="bag-count"></i>')}
       ${skillButton('Mapa', 'M', 'map', 'data-open="map" title="Mapa das áreas de caça (M)"', 'map-btn')}
       ${skillButton('Auto', 'T', 'auto', 'id="auto-btn" title="Modo automático: luta, desmonta sucata e recolhe sozinho (T)"', 'auto-btn')}
       ${(['Pulso', 'Arco', 'Investida', 'Sobrecarga'] as const).map((name, index) => skillButton(name, 'QWER'[index], (['pulse', 'arc', 'dash', 'overload'] as const)[index], `data-skill="${index}" title="${['Pulso Magnético: puxa e atordoa inimigos próximos', 'Arco Elétrico: raio em cadeia nos alvos', 'Investida Hidráulica: avanço invulnerável que rompe ímãs e interrompe golpes', 'Sobrecarga do drone: o módulo do drone dispara com força total (precisa do drone montado)'][index]}"`, '', `<i class="cd" id="cd${index}"></i>`)).join('')}
@@ -84,9 +86,28 @@ export function refreshHud(): void {
   const module = state.equipped.module;
   badge.hidden = !state.equipped.drone;
   badge.innerHTML = state.equipped.drone ? `${icon('drone_spark')}<span>Drone · ${esc(module ? ITEMS[module].name : 'sem módulo')}</span>` : '';
+  renderBagCount();
   renderToolHotbar();
   renderExtractionCard();
   renderRecentFinds();
+}
+
+let lastBagLevel: BagLevel | null = null;
+
+function renderBagCount(): void {
+  const state = session.state;
+  const level = bagLevel(state);
+  const el = $('bag-count');
+  el.textContent = `${bagSlotsUsed(state)}/${bagCapacity(state)}`;
+  el.className = `bag-count is-${level}`;
+  el.closest('button')?.setAttribute('aria-label', `Mochila ${el.textContent}${level === 'full' ? ', cheia' : ''}`);
+  if (lastBagLevel !== null && level !== lastBagLevel) announceBag(level, lastBagLevel);
+  lastBagLevel = level;
+}
+
+function announceBag(level: BagLevel, before: BagLevel): void {
+  if (level === 'full') session.toast(`${BAG_FULL_MSG}.`, 'warn');
+  else if (level === 'warn' && before === 'ok') session.toast('Mochila quase cheia (90%).', 'warn');
 }
 
 function renderExtractionCard(): void {

@@ -3,6 +3,8 @@ import { levelOf } from '../core/mana';
 import { availableAreas, computeProgress } from '../core/afk';
 import { afkRareFactor, droneCapacity, droneReady, playerStats } from '../core/derived';
 import { buy, craft, dismantle, equip, missingFor, offerAvailable, recipeKnown, sell, unequip } from '../core/economy';
+import { bagCapacity, bagFull, bagLevel, bagSlotsUsed, slotsFor, slotsMissing, takesSlot } from '../core/bag';
+import { SLOT_STACK } from '../data/bag';
 import { BAG_CAPACITY, bagStacks, countOf, type GameState } from '../core/state';
 import { AFK_AREAS, type AfkAreaId } from '../data/areas';
 import { ITEMS, ITEM_IDS, KIND_LABEL, RARITY, rarityOf, type EquipSlot, type ItemId } from '../data/items';
@@ -10,7 +12,7 @@ import { RECIPES } from '../data/recipes';
 import { VENDOR_NAME, VENDOR_OFFERS } from '../data/vendor';
 import { session } from '../session';
 import { heroPortraitUrl } from '../art/sprites';
-import { $, esc, icon } from './shared';
+import { $, bagHtml, esc, icon } from './shared';
 import { ferroPanelView, handleFerroAction } from './ferroPanel';
 import { applyDock, cycleDock, dockLabel, enableDockDrag, isDockKind, type DockKind } from './dock';
 import { useManaItem } from '../game/ferroController';
@@ -79,6 +81,7 @@ function handlePanelClick(event: MouseEvent): void {
   if (action === 'buy') session.run((state) => buy(state, value));
   if (action === 'sell') { const id = value as ItemId; const qty = button.dataset.qty === 'all' ? countOf(session.state, id) : 1; if (session.run((state) => sell(state, id, qty)).ok) coinPop(); }
   if (action === 'afk') afkStart(value as AfkAreaId);
+  if (action === 'afk-pending') session.claimPending();
   if (action === 'reset' && window.confirm('Apagar todo o progresso local?')) { session.reset(); window.location.reload(); }
 }
 
@@ -108,8 +111,8 @@ function inventory(state: GameState): string {
   const cells = ids.map((id) => bagCell(state, id)).join('') + '<span class="mo-cell is-empty"></span>'.repeat(empty);
   return `<div class="inventory-dock mochila">
     <section class="mo-card mo-char">${paperDoll(state)}${statChips(playerStats(state))}</section>
-    <section class="mo-card mo-bag">
-      <header class="mo-bag-head"><h3>Itens carregados</h3><span class="mo-cap">${used}/${BAG_CAPACITY}</span></header>
+    <section class="mo-card mo-bag bag-${bagLevel(state)}">
+      <header class="mo-bag-head"><h3>Mochila <span class="mo-slots">${bagSlotsUsed(state)}/${bagCapacity(state)}</span></h3></header>
       ${filters()}
       <div class="mo-grid">${cells}</div>
     </section>
@@ -195,7 +198,7 @@ function bagCell(state: GameState, id: ItemId): string {
 function detail(state: GameState, item: typeof ITEMS[ItemId]): string {
   const equipped = item.slot ? state.equipped[item.slot] : null;
   const comparison = equipped && equipped !== item.id ? comparisonHtml(ITEMS[equipped], item) : ownStats(item);
-  const uses = !item.slot ? materialUses(item.id) : '';
+  const uses = !item.slot ? materialUses(state, item.id) : '';
   const equipBtn = item.slot && equipped !== item.id ? `<button class="primary" data-act="equip:${item.id}">⚙ Equipar</button>` : '';
   const unequipBtn = item.slot && equipped === item.id ? `<button data-act="unequip:${item.slot}">Desequipar</button>` : '';
   const dismantleBtn = item.dismantle ? `<button data-act="dismantle:${item.id}">⚒ Desmontar</button>` : '';
@@ -226,10 +229,12 @@ function comparisonHtml(current: typeof ITEMS[ItemId], candidate: typeof ITEMS[I
   return `<ul class="mo-cmp">${rows.join('')}</ul>`;
 }
 
-function materialUses(id: ItemId): string {
+function materialUses(state: GameState, id: ItemId): string {
   const recipes = RECIPES.filter((recipe) => recipe.inputs[id]).map((recipe) => recipe.name);
   const item = ITEMS[id];
-  const parts = [recipes.length ? `monta ${recipes.join(', ')}` : '', item.dismantle ? 'desmontável' : '', item.sell ? `vende por ${item.sell} cr` : ''];
+  const slots = takesSlot(id) ? slotsFor(countOf(state, id)) : 0;
+  const space = slots ? `ocupa ${slots} ${slots === 1 ? 'espaço' : 'espaços'} (${SLOT_STACK} por espaço)` : '';
+  const parts = [space, recipes.length ? `monta ${recipes.join(', ')}` : '', item.dismantle ? 'desmontável' : '', item.sell ? `vende por ${item.sell} cr` : ''];
   return `<p class="mo-uses">${parts.filter(Boolean).join(' · ')}</p>`;
 }
 function slotLabel(slot: EquipSlot): string {
@@ -282,10 +287,17 @@ function vendor(state: GameState): string {
   return `${tabs}<p class="vendor-note">Dona Rebite compra sucata e vende peças.</p><div class="vendor-grid">${vendorTab === 'buy' ? buyRows : sellRows || '<p class="muted">Nada para vender.</p>'}</div>`;
 }
 
+function pendingLoot(state: GameState): string {
+  if (!Object.keys(state.afkPending).length) return '';
+  const missing = slotsMissing(state, state.afkPending);
+  const note = missing ? `Mochila cheia: faltam ${missing} ${missing === 1 ? 'espaço' : 'espaços'}.` : 'Há espaço na mochila.';
+  return `<div class="row afk-pending"><div class="grow"><b>Achados aguardando</b><div class="chips">${bagHtml(state.afkPending)}</div><div class="desc">${note}</div></div><button data-act="afk-pending" ${bagFull(state) ? 'disabled' : ''}>Recolher</button></div>`;
+}
+
 function terminal(state: GameState): string {
-  if (!droneReady(state)) return '<p class="muted">Nenhum drone operacional. Monte o Drone Faísca na oficina.</p>';
+  if (!droneReady(state)) return `${pendingLoot(state)}<p class="muted">Nenhum drone operacional. Monte o Drone Faísca na oficina.</p>`;
   const rows = (Object.keys(AFK_AREAS) as AfkAreaId[]).map((id) => { const area = AFK_AREAS[id]; const unlocked = availableAreas(state).includes(id); return `<div class="row">${unlocked ? '' : '<span class="lock">🔒</span>'}<div class="grow"><b>${esc(area.name)}</b><div class="desc">${esc(area.desc)}</div><div>Ciclo ${area.cycleMs / 1000}s · carga ${droneCapacity(state)} · raros ×${afkRareFactor(state)} · extração +${playerStats(state).extracao}</div></div><button data-act="afk:${id}" ${unlocked ? '' : 'disabled'}>${unlocked ? 'Iniciar' : 'Bloqueada'}</button></div>`; }).join('');
-  return `<p class="hint">Funciona enquanto a aba estiver aberta. Fechar a aba encerra mantendo ciclos concluídos. Uma extração por vez.</p><div class="list">${rows}</div>`;
+  return `${pendingLoot(state)}<p class="hint">Funciona enquanto a aba estiver aberta. Fechar a aba encerra mantendo ciclos concluídos. Uma extração por vez.</p><div class="list">${rows}</div>`;
 }
 
 function settings(): string { return '<p>Use a roda do mouse para ajustar o zoom.</p><button data-act="reset">Apagar progresso</button>'; }

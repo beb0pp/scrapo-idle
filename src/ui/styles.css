@@ -737,3 +737,7 @@ body[data-panel-dock='left'] #objective { opacity: 0; }
 #hover-tip { position: fixed; z-index: 60; pointer-events: none; padding: 3px 8px; font-size: 14px; color: var(--text); background: var(--panel); border: 2px solid var(--amber); box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); white-space: nowrap; }
 #hover-tip[hidden] { display: none; }
 body:has(#panel:not([hidden])) #hover-tip, body:has(#modal:not([hidden])) #hover-tip { display: none; }
+
+.skill .bag-count { position: absolute; z-index: 3; top: 3px; right: 3px; padding: 1px 3px; background: #282634; border: 1px solid #7b8aa3; color: var(--text); font-size: 10px; font-style: normal; line-height: 1; pointer-events: none; }
+.skill .bag-count.is-warn { color: var(--amber); border-color: var(--amber); }
+.skill .bag-count.is-full { color: var(--red); border-color: var(--red); }

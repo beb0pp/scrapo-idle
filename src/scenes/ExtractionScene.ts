@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { slotsMissing } from '../core/bag';
 import { TILES } from '../art/tileArt';
 import { attachDroneParts } from '../art/droneParts';
 import { computeProgress } from '../core/afk';
@@ -150,9 +151,16 @@ export class ExtractionScene extends Phaser.Scene {
     this.leaving = true;
     const loot = session.claimAfk();
     hideExtraction();
-    modal(`<h1>Achados recolhidos</h1><div class="chips">${loot ? bagHtml(loot) : '<span class="muted">Este resultado já tinha sido recolhido.</span>'}</div><p class="hint">Tudo foi para o inventário e já está salvo.</p>`, [
+    modal(`<h1>Achados recolhidos</h1><div class="chips">${loot ? bagHtml(loot) : '<span class="muted">Este resultado já tinha sido recolhido.</span>'}</div><p class="hint">${this.claimNote()}</p>`, [
       { label: 'Voltar ao Pátio Zero', primary: true, onClick: () => this.scene.start('World', { mapId: 'patio', entry: 'from_terminal' }) },
     ]);
+  }
+
+  private claimNote(): string {
+    const pending = session.state.afkPending;
+    if (!Object.keys(pending).length) return 'Tudo foi para o inventário e já está salvo.';
+    const missing = slotsMissing(session.state, pending);
+    return `Mochila cheia: faltam ${missing} ${missing === 1 ? 'espaço' : 'espaços'}. O restante aguarda no Terminal de Extração.`;
   }
 
   private resume(): void {

@@ -54,6 +54,8 @@ export interface GameState {
   afk: AfkSession | null;
   /** Recently claimed AFK session ids: second claim of the same id is a no-op. */
   claimedSessions: string[];
+  /** AFK loot that did not fit in the backpack; claimed later once slots free up. */
+  afkPending: ItemBag;
   /** Last time the open tab proved it was alive; caps AFK sessions after a tab close. */
   lastHeartbeat: number;
   stats: { searches: number; kills: number; extractions: number };
@@ -71,6 +73,7 @@ export function newGame(now: number): GameState {
     flags: {},
     afk: null,
     claimedSessions: [],
+    afkPending: {},
     lastHeartbeat: now,
     stats: { searches: 0, kills: 0, extractions: 0 },
     xp: 0,

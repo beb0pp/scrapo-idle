@@ -1,6 +1,8 @@
 import { ITEMS, type EquipSlot, type ItemBag, type ItemId } from '../data/items';
 import { RECIPE_BY_ID, type Recipe } from '../data/recipes';
+import { BAG_FULL_MSG } from '../data/bag';
 import { VENDOR_OFFERS } from '../data/vendor';
+import { fitsAll, swapFits } from './bag';
 import { addItems, bagStacks, countOf, removeItems, BAG_CAPACITY, type GameState } from './state';
 
 export type Result = { ok: true; msg: string } | { ok: false; msg: string };
@@ -27,6 +29,7 @@ export function craft(state: GameState, recipeId: string): Result {
   const outSlot = ITEMS[recipe.output].slot;
   const autoEquip = !!recipe.equipsOutput && !!outSlot && state.equipped[outSlot] === null;
   if (recipe.equipsOutput && outSlot && !autoEquip) return fail(`Já existe um ${ITEMS[recipe.output].name} montado.`);
+  if (!autoEquip && !swapFits(state, recipe.inputs, { [recipe.output]: 1 })) return fail(`${BAG_FULL_MSG}.`);
   if (!removeItems(state, recipe.inputs)) return fail('Faltam peças.');
   if (autoEquip && outSlot) {
     state.equipped[outSlot] = recipe.output;
@@ -65,6 +68,7 @@ export function unequip(state: GameState, slot: EquipSlot): Result {
 export function dismantle(state: GameState, id: ItemId): Result {
   const out = ITEMS[id].dismantle;
   if (!out) return fail('Não dá para desmontar isto.');
+  if (countOf(state, id) > 0 && !swapFits(state, { [id]: 1 }, out)) return fail(`${BAG_FULL_MSG}.`);
   if (!removeItems(state, { [id]: 1 })) return fail('Item não está no inventário.');
   addItems(state, out);
   return ok(`${ITEMS[id].name} desmontado.`);
@@ -87,6 +91,7 @@ export function buy(state: GameState, offerId: string): Result {
   const offer = VENDOR_OFFERS.find((o) => o.id === offerId);
   if (!offer || !offerAvailable(state, offerId)) return fail('Oferta indisponível.');
   if (state.currency < offer.price) return fail('Créditos insuficientes.');
+  if (offer.item && !fitsAll(state, { [offer.item]: 1 })) return fail(`${BAG_FULL_MSG}.`);
   state.currency -= offer.price;
   if (offer.item) addItems(state, { [offer.item]: 1 });
   if (offer.grantsFlag) state.flags[offer.grantsFlag] = true;

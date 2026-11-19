@@ -104,6 +104,7 @@ export function parseSave(json: string | null, now: number): GameState {
     flags: raw.flags && typeof raw.flags === 'object' ? (raw.flags as GameState['flags']) : {},
     afk: parseAfk(raw.afk),
     claimedSessions: Array.isArray(raw.claimedSessions) ? raw.claimedSessions.filter((s) => typeof s === 'string') : [],
+    afkPending: parseBag(raw.afkPending),
     lastHeartbeat: isNum(raw.lastHeartbeat) ? raw.lastHeartbeat : now,
     stats,
     xp: isNum(raw.xp) ? Math.max(0, Math.floor(raw.xp)) : legacyXp(stats, ferro.built.length, ferro.learned.length),

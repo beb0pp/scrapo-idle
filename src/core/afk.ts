@@ -4,7 +4,8 @@ import { XP } from '../data/xp';
 import { afkRareFactor, droneCapacity, droneReady, playerStats } from './derived';
 import { grantXp } from './level';
 import { mixSeed, mulberry32, rollEntry, rollQty } from './rng';
-import { addItems, type AfkEndReason, type AfkSession, type GameState } from './state';
+import { addItemsCapped } from './bag';
+import { type AfkEndReason, type AfkSession, type GameState } from './state';
 
 export interface AfkProgress {
   cycles: number;
@@ -98,7 +99,13 @@ export function finalizeAfterReload(state: GameState, now: number): void {
   endAfk(state, Math.min(now, Math.max(state.lastHeartbeat, s.startedAt)), 'tab_closed');
 }
 
-/** Delivers loot exactly once per session id. */
+function mergePending(state: GameState, left: ItemBag): void {
+  const pending: ItemBag = { ...state.afkPending };
+  for (const [id, qty] of Object.entries(left) as [keyof ItemBag, number][]) pending[id] = (pending[id] ?? 0) + qty;
+  state.afkPending = pending;
+}
+
+/** Delivers loot exactly once per session id; what does not fit waits in afkPending. Returns what reached the bag. */
 export function claimAfk(state: GameState, now: number): ItemBag | null {
   const s = state.afk;
   if (!s) return null;
@@ -106,9 +113,18 @@ export function claimAfk(state: GameState, now: number): ItemBag | null {
   state.afk = null;
   if (state.claimedSessions.includes(s.id)) return null;
   const { loot, cycles } = computeProgress(s, now);
-  addItems(state, loot);
+  const { added, left } = addItemsCapped(state, loot);
+  mergePending(state, left);
   state.claimedSessions = [...state.claimedSessions, s.id].slice(-CLAIM_HISTORY);
   state.stats.extractions++;
   grantXp(state, XP.afkCycle * cycles);
-  return loot;
+  return added;
+}
+
+/** Moves pending AFK loot into the bag as far as it fits. Null when nothing could move. */
+export function claimPending(state: GameState): ItemBag | null {
+  const { added, left } = addItemsCapped(state, state.afkPending);
+  if (!Object.keys(added).length) return null;
+  state.afkPending = left;
+  return added;
 }
