@@ -9,7 +9,10 @@ const W = 32;
 const H = 18;
 const T = 16;
 
-function layout(areaId: string): { ground: number[][]; deco: number[][]; piles: [number, number][]; bin: [number, number] } {
+type PropSpot = [key: string, x: number, bottom: number];
+
+/** Ground tiles plus 3/4-view props (same art as the world maps), each anchored at its bottom centre. */
+function layout(areaId: string): { ground: number[][]; props: PropSpot[]; piles: [number, number][]; bin: [number, number] } {
   const sorting = areaId === 'afk_sorting';
   const ground = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => {
     if (sorting) return y < 2 ? TILES.wall : y === 6 || y === 12 ? TILES.conveyor : TILES.floor;
@@ -17,19 +20,22 @@ function layout(areaId: string): { ground: number[][]; deco: number[][]; piles: 
     if (y === 3 || y === 5) return TILES.gravel;
     return (x * 7 + y * 13) % 11 < 3 ? TILES.grass : TILES.dirt;
   }));
-  const deco = Array.from({ length: H }, () => Array.from({ length: W }, () => 0));
-  const put = (x: number, y: number, t: number) => (deco[y][x] = t);
+  const at = (key: string, tx: number, ty: number): PropSpot => [key, tx * T + 8, ty * T + T];
+  const props: PropSpot[] = [];
   if (sorting) {
-    for (const [x, y] of [[3, 3], [28, 3], [4, 15], [27, 15], [15, 3]]) put(x, y, TILES.crate);
-    for (const [x, y] of [[10, 9], [22, 9], [8, 15], [24, 4]]) put(x, y, TILES.debris);
-    for (const x of [6, 25]) put(x, 9, TILES.pipe);
+    for (const [x, y] of [[3, 3], [28, 3], [4, 15], [27, 15], [15, 3]]) props.push(at('crate', x, y));
+    for (const [x, y] of [[10, 9], [22, 9], [8, 15], [24, 4]]) props.push(at('girders', x, y));
+    for (const x of [6, 25]) props.push(at('pipe', x, 9));
+    props.push(at('drums', 18, 15), at('robotHusk', 12, 15));
   } else {
-    for (let x = 2; x < W - 2; x += 5) put(x, 4, TILES.wagonL), put(x + 1, 4, TILES.wagonR);
-    for (const [x, y] of [[20, 9], [21, 9], [20, 10], [26, 13], [27, 13], [12, 14], [3, 15]]) put(x, y, TILES.mound);
-    for (const [x, y] of [[9, 8], [16, 12], [24, 7], [6, 14], [29, 10], [14, 7]]) put(x, y, TILES.weeds);
-    for (const [x, y] of [[18, 15], [28, 16]]) put(x, y, TILES.forklift);
+    // one coupled train on the rail (locomotive + four wagons, 48 px each), wheels on the rail line
+    const rail = 4 * T + 13;
+    ['loco', 'wagon0', 'wagon1', 'wagon0', 'wagon1'].forEach((key, i) => props.push([key, 3 * T + i * 48 + 24, rail]));
+    props.push(at('heap0', 20, 10), at('heap2', 27, 13), at('heapSmall', 12, 14), at('heapRust0', 3, 15));
+    for (const [x, y] of [[9, 8], [16, 12], [24, 7], [6, 14], [29, 10], [14, 7]]) props.push(at(`tuft${(x + y) % 3}`, x, y));
+    props.push(at('forklift', 18, 15), at('tires', 28, 16), at('lamp', 1, 6), at('lamp', 30, 6));
   }
-  return { ground, deco, piles: [[10, 8], [18, 7], [25, 10], [22, 14], [13, 13]], bin: [5, 10] };
+  return { ground, props, piles: [[10, 8], [18, 7], [25, 10], [22, 14], [13, 13]], bin: [5, 10] };
 }
 
 export class ExtractionScene extends Phaser.Scene {
@@ -61,7 +67,7 @@ export class ExtractionScene extends Phaser.Scene {
       return map.createLayer(0, ts, 0, 0)!;
     };
     mk(L.ground).setDepth(-20);
-    mk(L.deco).setDepth(-10);
+    for (const [key, x, bottom] of L.props) this.add.image(x, bottom, `prop_${key}`).setOrigin(0.5, 1).setDepth(bottom);
     this.bin.set(L.bin[0] * T + 8, L.bin[1] * T + 8);
     this.add.image(this.bin.x, this.bin.y, 'bin').setDepth(this.bin.y);
     this.add.sprite(this.bin.x - 22, this.bin.y + 2, 'terminal', 0).play('terminal-blink').setDepth(this.bin.y);
