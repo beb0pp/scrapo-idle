@@ -1,4 +1,5 @@
 import { ANY_FILTER, defaultRegion, filterAreas, levelRanges, sortAreas, type AreaFilter, type ElementMode, type SortKey } from '../core/huntFilter';
+import { forecast } from '../core/huntForecast';
 import { levelOf } from '../core/level';
 import { ELEMENT_IDS, ELEMENTS, type ElementId } from '../data/elements';
 import { ENEMY_INFO, ENEMY_KINDS, type EnemyKind } from '../data/enemies';
@@ -158,7 +159,7 @@ function renderMap(r: Region, all: HuntArea[], shown: HuntArea[], level: number)
   const picked = ui.selected ? areaById(ui.selected) : undefined;
   const card = q('.mapw-card');
   card.hidden = !picked;
-  card.innerHTML = picked ? detailCard(picked, level) : '';
+  card.innerHTML = picked ? detailCard(picked, level, forecast(session.state, picked)) : '';
 }
 
 function hoverTip(mark: HTMLElement | null): void {

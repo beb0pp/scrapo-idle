@@ -80,7 +80,7 @@ test('Térmico + "Fraco contra" mostra só áreas com inimigos Elétricos ou Mag
   await expect(page.locator('#panel')).toBeVisible();
 });
 
-test('lista ordena por nível e "Viajar" leva até a área', async ({ page }) => {
+test('lista ordena por nível e "Caçar aqui" leva até a área', async ({ page }) => {
   await seedSave(page, { xp: 5000 });
   await enterWorld(page, 'patio');
   await openMap(page);
@@ -101,7 +101,7 @@ test('lista ordena por nível e "Viajar" leva até a área', async ({ page }) =>
   await page.screenshot({ path: shot('mapa-2.png') });
 
   await win(page).locator('[data-region="varzea"]').click();
-  await win(page).getByRole('button', { name: 'Viajar para Valas de Lata' }).click();
+  await win(page).getByRole('button', { name: 'Caçar em Valas de Lata' }).click();
   await page.waitForFunction(() => {
     const w = (window as any).__scrapo.world();
     return w.mapId === 'hunt' && !!w.player?.body && w.areaName === 'Valas de Lata';
@@ -115,7 +115,7 @@ test('a área onde o herói está aparece como "Caçando" no mapa e na lista', a
   await openMap(page);
   await expect(win(page).locator('.mapw-here')).toHaveCount(0);
   await win(page).locator('.mapw-mark[data-area="valas_de_lata"]').click();
-  await win(page).getByRole('button', { name: 'Viajar para Valas de Lata' }).click();
+  await win(page).getByRole('button', { name: 'Caçar em Valas de Lata' }).click();
   await page.waitForFunction(() => {
     const w = (window as any).__scrapo.world();
     return w.mapId === 'hunt' && !!w.player?.body && w.areaName === 'Valas de Lata';
@@ -136,5 +136,37 @@ test('a área onde o herói está aparece como "Caçando" no mapa e na lista', a
   await expect(row).toHaveCount(1);
   await expect(row).toHaveAttribute('data-row', 'valas_de_lata');
   await expect(row.locator('.mapw-here')).toHaveText('Caçando');
-  await expect(row.getByRole('button', { name: 'Viajar para Valas de Lata' })).toBeEnabled();
+  await expect(row.getByRole('button', { name: 'Caçar em Valas de Lata' })).toBeEnabled();
+});
+
+test('selecionar uma área mostra a previsão (XP/h, Sucata/h) e "Caçar aqui" viaja', async ({ page }) => {
+  await seedSave(page, { xp: 5000 });
+  await enterWorld(page, 'patio');
+  await openMap(page);
+  await win(page).locator('[data-region="varzea"]').click();
+  await win(page).locator('.mapw-mark[data-area="corrego_ferro_velho"]').click();
+  const card = win(page).locator('.mapw-card');
+  await expect(card).toContainText('Ferro-Velho do Córrego');
+  const xp = card.locator('[data-fc="xp"] dd');
+  const scrap = card.locator('[data-fc="scrap"] dd');
+  await expect(card.locator('[data-fc="xp"] dt')).toHaveText('XP/h');
+  await expect(card.locator('[data-fc="scrap"] dt')).toHaveText('Sucata/h');
+  await expect(xp).toHaveText(/^[\d.]+$/);
+  expect(Number((await xp.innerText()).replace(/\./g, ''))).toBeGreaterThan(0);
+  expect(Number((await scrap.innerText()).replace(/\./g, ''))).toBeGreaterThan(0);
+  await expect(card.locator('.mapw-fc-note')).toHaveText('estimativa');
+  await expect(card.locator('.mapw-fc-drop').first()).toContainText('%');
+  await expect(card.locator('.mapw-fc-el .el-chip[data-el="eletrico"]')).toBeVisible();
+  await bannerGone(page);
+  await card.screenshot({ path: process.env.MAPA_CARD_SHOT ?? shot('mapa-previsao.png') });
+
+  const go = card.getByRole('button', { name: 'Caçar em Ferro-Velho do Córrego' });
+  await expect(go).toHaveText('Caçar aqui');
+  await expect(go).toBeEnabled();
+  await go.click();
+  await page.waitForFunction(() => {
+    const w = (window as any).__scrapo.world();
+    return w.mapId === 'hunt' && !!w.player?.body && w.areaName === 'Ferro-Velho do Córrego';
+  }, null, { timeout: 20_000 });
+  await expect(page.locator('#panel')).toBeHidden();
 });

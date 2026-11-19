@@ -1,11 +1,13 @@
 import { enemyIconUrls } from '../art/enemyArt';
 import type { ElementMode, SortDir, SortKey } from '../core/huntFilter';
+import type { HuntForecast } from '../core/huntForecast';
 import { PILE_TABLES } from '../data/areas';
 import { ELEMENTS } from '../data/elements';
 import { ENEMY_INFO, type EnemyKind } from '../data/enemies';
 import { REGIONS, type AreaSize, type HuntArea, type Region } from '../data/hunt';
 import { ITEMS, type ItemId } from '../data/items';
 import { elementChip } from './elementChip';
+import { forecastBlock } from './huntForecastMarkup';
 import { esc, icon } from './shared';
 
 export const SIZE_LABEL: Record<AreaSize, string> = { small: 'Pequena', medium: 'Média', large: 'Grande' };
@@ -56,24 +58,30 @@ export function marker(area: HuntArea, heroLevel: number, selected: boolean, hun
     + `${enemyIcon(main, 'mapw-mico')}<b class="mapw-lvl">${area.level}</b>${above ? `<i class="mapw-lock">${LOCK}</i>` : ''}${hunting ? HERE_BADGE : ''}</button>`;
 }
 
+function cardHead(area: HuntArea): string {
+  return `<header><b>${esc(area.name)}</b><span class="mapw-nv">Nv ${area.level}</span></header><ul class="mapw-enemies">${enemyRows(area)}</ul>`;
+}
+
+const aboveWarn = (area: HuntArea, heroLevel: number): string => (area.level > heroLevel ? `<p class="mapw-warn">${LOCK} Acima do seu nível</p>` : '');
+
 export function tipCard(area: HuntArea, heroLevel: number): string {
-  const above = area.level > heroLevel;
-  return `<header><b>${esc(area.name)}</b><span class="mapw-nv">Nv ${area.level}</span></header>`
-    + `<ul class="mapw-enemies">${enemyRows(area)}</ul>`
+  return cardHead(area)
     + `<p class="mapw-meta"><span>Área ${SIZE_LABEL[area.size].toLowerCase()}</span><span class="mapw-loots">${lootHint(area)}</span></p>`
-    + (above ? `<p class="mapw-warn">${LOCK} Acima do seu nível</p>` : '');
+    + aboveWarn(area, heroLevel);
 }
 
 /** Travel button; an area above the hero's level shows its gate and stays disabled. */
 function goButton(area: HuntArea, heroLevel: number, cls: string): string {
   if (area.level > heroLevel) {
-    return `<button class="${cls}" data-fk="go:${area.id}" disabled title="Suba ao Nv ${area.level} para viajar">${LOCK} Exige Nv ${area.level}</button>`;
+    return `<button class="${cls}" data-fk="go:${area.id}" disabled title="Suba ao Nv ${area.level} para caçar aqui">${LOCK} Exige Nv ${area.level}</button>`;
   }
-  return `<button class="${cls}" data-travel="${area.id}" data-fk="go:${area.id}" aria-label="Viajar para ${esc(area.name)}">Viajar</button>`;
+  return `<button class="${cls}" data-travel="${area.id}" data-fk="go:${area.id}" aria-label="Caçar em ${esc(area.name)}">Caçar aqui</button>`;
 }
 
-export function detailCard(area: HuntArea, heroLevel: number): string {
-  return `<div class="mapw-card-body">${tipCard(area, heroLevel)}</div>` + goButton(area, heroLevel, 'primary mapw-go');
+/** Selected-area card: the tip plus the hunt estimate (its drops replace the loot hint) and the hunt button. */
+export function detailCard(area: HuntArea, heroLevel: number, fc: HuntForecast | null): string {
+  const body = fc ? cardHead(area) + forecastBlock(fc) + aboveWarn(area, heroLevel) : tipCard(area, heroLevel);
+  return `<div class="mapw-card-body">${body}</div>` + goButton(area, heroLevel, 'primary mapw-go');
 }
 
 const COLUMNS: [SortKey, string][] = [['name', 'Área'], ['level', 'Nv'], ['enemies', 'Inimigos'], ['size', 'Tamanho']];
