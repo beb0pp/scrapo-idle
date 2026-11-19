@@ -701,3 +701,13 @@ body[data-inv-dock='left'] #objective { opacity: 0; }
   .skill span { font-size: 11px; }
 }
 .skill[data-skill="3"] span { font-size: 11px; letter-spacing: -0.4px; }
+
+/* shortcut letters on the skill, spell and tool slots: Pixelify's Z/2 and S/5 look alike, so a plain bold face */
+.skill-key, .spell-slot > b, .tool-slot > b {
+  font-family: Verdana, 'Trebuchet MS', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+}
+/* drone badge and toasts sit above the footer so they never cover the Mercado button */
+.drone-badge { bottom: 92px; }
+#toasts { bottom: 130px; }
