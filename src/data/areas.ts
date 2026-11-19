@@ -137,6 +137,62 @@ export const PILE_TABLES: Record<string, { rolls: number; loot: LootEntry[] }> =
       { item: 'cable', weight: 10, min: 1, max: 1 },
     ],
   },
+  // Hunt areas (data/hunt.ts): piles and enemy drops of one region share its table.
+  hunt_rust: {
+    rolls: 2,
+    loot: [
+      { item: 'scrap', weight: 50, min: 2, max: 4 },
+      { item: 'gear', weight: 20, min: 1, max: 1 },
+      { item: 'cable', weight: 20, min: 1, max: 1 },
+      { item: 'servo', weight: 7, min: 1, max: 1 },
+      { item: 'cell', weight: 3, min: 1, max: 1 },
+    ],
+  },
+  hunt_foundry: {
+    rolls: 2,
+    loot: [
+      { item: 'scrap', weight: 36, min: 3, max: 5 },
+      { item: 'gear', weight: 26, min: 1, max: 2 },
+      { item: 'cable', weight: 16, min: 1, max: 2 },
+      { item: 'servo', weight: 12, min: 1, max: 1 },
+      { item: 'cell', weight: 8, min: 1, max: 1 },
+      { item: 'ether_shard', weight: 2, min: 1, max: 1 },
+    ],
+  },
+  hunt_flooded: {
+    rolls: 3,
+    loot: [
+      { item: 'scrap', weight: 30, min: 3, max: 5 },
+      { item: 'cable', weight: 24, min: 1, max: 2 },
+      { item: 'cell', weight: 16, min: 1, max: 1 },
+      { item: 'servo', weight: 16, min: 1, max: 1 },
+      { item: 'gear', weight: 10, min: 1, max: 2 },
+      { item: 'ether_shard', weight: 4, min: 1, max: 1 },
+    ],
+  },
+  hunt_magnetic: {
+    rolls: 3,
+    loot: [
+      { item: 'scrap', weight: 26, min: 4, max: 6 },
+      { item: 'servo', weight: 22, min: 1, max: 2 },
+      { item: 'cell', weight: 20, min: 1, max: 2 },
+      { item: 'gear', weight: 16, min: 1, max: 2 },
+      { item: 'ether_shard', weight: 10, min: 1, max: 1 },
+      { item: 'relic_capacitor', weight: 1, min: 1, max: 1 },
+    ],
+  },
+  hunt_core: {
+    rolls: 3,
+    loot: [
+      { item: 'scrap', weight: 22, min: 5, max: 8 },
+      { item: 'servo', weight: 22, min: 1, max: 2 },
+      { item: 'cell', weight: 22, min: 1, max: 2 },
+      { item: 'ether_shard', weight: 16, min: 1, max: 2 },
+      { item: 'gear', weight: 14, min: 2, max: 3 },
+      { item: 'ether_crystal', weight: 2, min: 1, max: 1 },
+      { item: 'relic_capacitor', weight: 2, min: 1, max: 1 },
+    ],
+  },
   enemy_drop: {
     rolls: 1,
     loot: [

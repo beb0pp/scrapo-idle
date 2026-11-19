@@ -1,5 +1,4 @@
 import type { ElementId } from './elements';
-import { XP } from './xp';
 
 export const ENEMY_KINDS = ['sorter', 'press', 'sparkbot', 'magnetron', 'scrapgolem'] as const;
 export type EnemyKind = (typeof ENEMY_KINDS)[number];
@@ -17,5 +16,3 @@ export const ENEMY_INFO: Record<EnemyKind, EnemyInfo> = {
   magnetron: { hp: 48, element: 'magnetico' },
   scrapgolem: { hp: 130, element: 'corrosivo' },
 };
-
-export const killXp = (kind: EnemyKind): number => Math.round(ENEMY_INFO[kind].hp / XP.hpPerKillXp);
