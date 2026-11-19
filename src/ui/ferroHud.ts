@@ -100,7 +100,10 @@ export function setLevel(info: LevelInfo): void {
   if (key === levelKey) return;
   levelKey = key;
   const num = document.getElementById('lvl-num');
-  if (num) num.textContent = String(info.level);
+  if (num) {
+    num.textContent = String(info.level);
+    num.dataset.digits = String(String(info.level).length);
+  }
   document.getElementById('lvl-badge')?.setAttribute('aria-label', `Nível ${info.level}`);
   const xpNum = document.getElementById('xp-num');
   if (xpNum) xpNum.textContent = info.need > 0 ? `XP ${info.into}/${info.need}` : 'XP máx.';

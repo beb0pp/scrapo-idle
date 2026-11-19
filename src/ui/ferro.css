@@ -273,8 +273,10 @@ img.fe-bico { width: 56px; height: 56px; padding: 3px; box-shadow: inset 0 0 6px
   color: #2a1a10;
   line-height: 1;
 }
-.lvl-medal small { font-size: 9px; letter-spacing: 1px; font-weight: 700; }
-.lvl-medal b { font-family: Verdana, 'Trebuchet MS', sans-serif; font-size: 20px; font-weight: 700; }
+.lvl-medal small { display: block; font-size: 9px; line-height: 10px; letter-spacing: 1px; font-weight: 700; }
+.lvl-medal b { display: block; font-family: Verdana, 'Trebuchet MS', sans-serif; font-size: 20px; line-height: 20px; font-weight: 700; letter-spacing: -1px; }
+.lvl-medal b[data-digits="2"] { font-size: 18px; }
+.lvl-medal b[data-digits="3"] { font-size: 14px; }
 .vit-bars { display: grid; gap: 4px; min-width: 190px; }
 .vit-bars .hp, .vit-bars .mana { display: flex; align-items: center; gap: 6px; margin: 0; }
 .vit-bars .hp-medallion { width: 22px; height: 22px; }
@@ -334,8 +336,10 @@ img.fe-bico { width: 56px; height: 56px; padding: 3px; box-shadow: inset 0 0 6px
 .vit-bars #hp-num, .vit-bars #mana-num { font-size: 13px; line-height: 1; padding-right: 8px; }
 .vit-bars .xp .xp-bar { height: 8px; }
 #xp-num { font-size: 11px; }
-.lvl-medal { width: 52px; height: 52px; }
-.lvl-medal b { font-size: 22px; }
+.lvl-medal { width: 52px; height: 52px; padding-bottom: 2px; }
+.lvl-medal b { font-size: 22px; line-height: 22px; }
+.lvl-medal b[data-digits="2"] { font-size: 20px; }
+.lvl-medal b[data-digits="3"] { font-size: 15px; }
 .hud-top:has(.vitals) ~ .objective { top: 104px; }
 
 /* level plate: compact so it stays inside the hero stage outline */
