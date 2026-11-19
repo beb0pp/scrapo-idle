@@ -2,6 +2,28 @@
 
 Análise de design de jogos idle online (referência principal: PokeIdle), feita a partir do que o cliente web mostra ao jogador. Aqui ficam só as **conclusões de design** e as **propostas originais** para o Scrapo; nada de código, texto, arte ou números foi copiado. Arquitetura online: ver [MULTIPLAYER.md](MULTIPLAYER.md).
 
+## Ritmo e recompensa (regra de design)
+
+Lição do jogo estudado, observada jogando: capturar e subir de nível é lento demais, e isso deixa o jogo chato. O Scrapo tem dificuldade, mas **mediana**: o jogador precisa sentir recompensa numa frequência alta e constante. Toda mecânica nova e todo ajuste de números passam por estas metas.
+
+| Evento | Meta (jogo ativo, conteúdo principal) |
+|---|---|
+| Algo bom na tela (XP, dano, sucata, drop) | a cada 10–20 s |
+| Item Incomum ou melhor | a cada 2–4 min |
+| Item Raro ou melhor | a cada 10–15 min |
+| Primeiros 5 níveis | em até 10 min |
+| Nível 10 | em ~30 min (curva atual: `XP_BASE=22`, `XP_EXP=2,2` em `src/core/level.ts`) |
+| Nível seguinte, até o Nv 25 | a cada 10–20 min; nunca mais de ~45 min entre níveis |
+| Algo novo desbloqueado (receita, área, feitiço, construção) | em toda sessão de 15–20 min |
+| Próxima área ou fase | em 1–2 sessões, não em dias |
+| Renda offline (terminal, bancada) | pelo menos metade do ritmo ativo |
+
+Regras:
+- **Sem parede de progressão.** A dificuldade acompanha o jogador; se ele travar, o jogo diz em uma frase o que fazer.
+- **Falha não zera.** Azar acumula garantia (pity) e morrer custa pouco tempo, nunca progresso.
+- **Medir, não achar.** A sessão automática (`e2e/auto.spec.ts`, `session.autoLog`) mede itens/min, raros/h e níveis/h; um ajuste de números só entra se ficar dentro destas faixas.
+- **Monetização não compra ritmo.** Gemas podem acelerar ou cosméticos, mas o jogo grátis precisa cumprir esta tabela sozinho.
+
 ## Mecânicas de referência que sustentam retenção
 
 1. **Hunt idle com automações como "custo operacional".** O jogador não clica no combate; ele gerencia estoque (poção, revive, bola) e escolhe a área. O gargalo é o consumível, e a falta dele "para" o idle e puxa o jogador de volta. Consistência: aparece em tutorial, painel, eventos, Modo Economia.
