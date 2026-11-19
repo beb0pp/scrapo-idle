@@ -114,6 +114,9 @@ const ICON_PAL: Record<SpellId, IconPal> = {
   spell_haste: { bg: ['#141008', '#2e2410', '#4e3c14'], ink: '#a07a1a', mid: '#e0b33a', hi: '#fff2b0', white: WHITE },
   spell_net: { bg: ['#140a18', '#301634', '#4e2252'], ink: '#8a3a90', mid: '#d878e0', hi: '#f8c8f4', white: WHITE },
   spell_harvest: { bg: ['#0a1408', '#183012', '#24501a'], ink: '#4a8a2a', mid: '#9fd86a', hi: '#e8ffc8', white: WHITE },
+  spell_arc: { bg: ['#080c18', '#121e3c', '#1c3066'], ink: '#2f4fa8', mid: '#6f9cff', hi: '#cfe0ff', white: WHITE },
+  spell_crush: { bg: ['#160810', '#341220', '#5a1a30'], ink: '#9a2038', mid: '#e8506a', hi: '#ffc0cc', white: WHITE },
+  spell_acid: { bg: ['#08140f', '#10301f', '#185034'], ink: '#1e7a56', mid: '#3fd49a', hi: '#c4ffe4', white: WHITE },
 };
 
 function luminous(c: Ctx, pal: IconPal, glow: [number, number, number], shape: Shape, outline = true, sparks: [number, number, number][] = []): void {
@@ -210,6 +213,51 @@ const harvestShape: Shape = (x, y) => {
   return 0;
 };
 
+function segDist(px0: number, py0: number, [ax, ay]: [number, number], [bx, by]: [number, number]): number {
+  const vx = bx - ax, vy = by - ay;
+  const t = Math.max(0, Math.min(1, ((px0 - ax) * vx + (py0 - ay) * vy) / (vx * vx + vy * vy)));
+  return Math.hypot(px0 - (ax + vx * t), py0 - (ay + vy * t));
+}
+
+const ARC_PATH: [number, number][] = [[2.5, 2.5], [6, 5], [4.5, 7.5], [8.5, 9], [10.5, 6.5], [13.5, 8.5], [11, 11], [13.5, 13.5]];
+const ARC_NODES: [number, number][] = [[2.5, 2.5], [8.5, 9], [13.5, 13.5]];
+
+/** Chain arc: a jagged bolt jumping between three white-hot nodes. */
+const arcShape: Shape = (x, y) => {
+  const cx = x + 0.5, cy = y + 0.5;
+  if (ARC_NODES.some(([nx, ny]) => Math.hypot(cx - nx, cy - ny) < 1.3)) return 4;
+  if (ARC_NODES.some(([nx, ny]) => Math.hypot(cx - nx, cy - ny) < 2.3)) return 3;
+  let d = Infinity;
+  for (let i = 1; i < ARC_PATH.length; i++) d = Math.min(d, segDist(cx, cy, ARC_PATH[i - 1], ARC_PATH[i]));
+  return d < 0.55 ? 3 : d < 1.05 ? 2 : 0;
+};
+
+/** Crush: two magnet jaws squeezing a white-hot block. */
+const crushShape: Shape = (x, y) => {
+  if (x >= 6 && x <= 9 && y >= 6 && y <= 9) return x >= 7 && x <= 8 && y >= 7 && y <= 8 ? 4 : 3;
+  const jaw = (u: number) => {
+    if (u <= 1 && y >= 3 && y <= 12) return u === 1 && (y === 3 || y === 12) ? 4 : 2;
+    if (u >= 2 && u <= 3 && (y === 3 || y === 12)) return 3;
+    if (u === 4 && y >= 6 && y <= 9) return 3;
+    return 0;
+  };
+  return x <= 4 ? jaw(x) : x >= 11 ? jaw(15 - x) : 0;
+};
+
+/** Acid: a falling drop over the puddle it leaves. */
+const acidShape: Shape = (x, y) => {
+  const cx = x + 0.5, cy = y + 0.5;
+  const body = Math.hypot(cx - 8, cy - 7.5) <= 3.8;
+  const tip = cy >= 1 && cy < 7.5 && Math.abs(cx - 8) <= (cy - 1) * 0.55;
+  if (body || tip) {
+    if (Math.hypot(cx - 6.6, cy - 6.4) < 1.2) return 4;
+    return Math.hypot(cx - 7, cy - 6.5) < 2.6 ? 3 : 2;
+  }
+  const pool = ((cx - 8) / 6.5) ** 2 + ((cy - 14) / 1.6) ** 2;
+  if (pool <= 1) return cy < 13.5 ? 3 : 2;
+  return 0;
+};
+
 const SPELL_ICONS: Record<SpellId, (c: Ctx) => void> = {
   spell_ember: (c) => luminous(c, ICON_PAL.spell_ember, [10.5, 5.5, 8], emberShape, true, [[14, 1, 3], [13, 8, 2], [8, 2, 2], [1, 15, 2]]),
   spell_ward: (c) => luminous(c, ICON_PAL.spell_ward, [8, 8, 8.5], wardShape, true, [[1, 1, 3], [14, 2, 2], [14, 13, 3]]),
@@ -218,6 +266,9 @@ const SPELL_ICONS: Record<SpellId, (c: Ctx) => void> = {
     [[0, 4, 2], [1, 4, 2], [2, 4, 3], [0, 10, 2], [1, 10, 3], [12, 11, 2], [13, 11, 2], [14, 11, 3], [14, 3, 3]]),
   spell_net: (c) => luminous(c, ICON_PAL.spell_net, [8, 8, 8.5], netShape, false, [[0, 1, 3], [15, 14, 3]]),
   spell_harvest: (c) => luminous(c, ICON_PAL.spell_harvest, [8, 7, 8], harvestShape, true, [[1, 2, 3], [14, 3, 2], [2, 10, 2]]),
+  spell_arc: (c) => luminous(c, ICON_PAL.spell_arc, [8, 8, 8.5], arcShape, true, [[14, 2, 3], [1, 12, 2], [15, 5, 2]]),
+  spell_crush: (c) => luminous(c, ICON_PAL.spell_crush, [8, 8, 8], crushShape, true, [[7, 1, 3], [8, 14, 2], [12, 0, 2]]),
+  spell_acid: (c) => luminous(c, ICON_PAL.spell_acid, [8, 9, 8], acidShape, true, [[3, 9, 3], [13, 10, 2], [12, 3, 2]]),
 };
 
 export const spellIconUrls: Partial<Record<SpellId, string>> = {};

@@ -15,7 +15,8 @@ import { Cobalto, type AllyTarget } from './ally';
 import type { Crane, Enemy } from './enemies';
 import { reachableCells, spotNear } from './placement';
 import { levelUpBurst } from './vfx';
-import { discoveryBurst, playEmber, playHarvest, playHaste, playLodestone, playNet, playWard, spellAura, wardBreak, wardHit, type Pt, type WardShield } from './spellfx';
+import { discoveryBurst, playAcid, playArc, playCrush, playEmber, playHarvest, playHaste, playLodestone, playNet, playWard, spellAura, wardBreak, wardHit, type Pt, type WardShield } from './spellfx';
+import { acidSplashTargets, acidTickCount, acidTickDamage, ACID_PUDDLE_MS, ACID_RADIUS, ACID_TICK_MS, chainDamage, chainTargets, crushDamage, crushTargets, CRUSH_RADIUS } from '../core/attackSpells';
 
 // Ferromancy runtime in the world: spells (Z X C), Auto casting, Ether veins, the sleeping automaton and Cobalto.
 
@@ -36,7 +37,7 @@ export interface FerroApi {
   facing(): Pt;
   aim(): Pt;
   enemies(): Enemy[];
-  targets(): AllyTarget[];
+  targets(): FerroTarget[];
   pickups(): Pt[];
   attractPickups(x: number, y: number, r: number): void;
   addInteractable(it: FerroInteractable): void;
@@ -51,6 +52,11 @@ export interface FerroApi {
   markManual(): void;
   /** Scene ms since the hero last took damage. */
   sinceHurt(): number;
+}
+
+/** Ally target that a spell can also drag; the crane cannot be pulled. */
+export interface FerroTarget extends AllyTarget {
+  pull?(x: number, y: number, stunMs: number): void;
 }
 
 interface HostPile { x: number; y: number }
@@ -90,11 +96,12 @@ export function ferroApi(scene: Phaser.Scene): FerroApi {
     aim: () => h.cameras.main.getWorldPoint(h.input.activePointer.x, h.input.activePointer.y),
     enemies: () => h.enemies,
     targets: () => {
-      const list: AllyTarget[] = h.enemies.filter((e) => e.alive).map((e) => ({
+      const list: FerroTarget[] = h.enemies.filter((e) => e.alive).map((e) => ({
         get x() { return e.x; },
         get y() { return e.y; },
         radius: 8,
         hit: (n: number, el?: ElementId | null) => h.damageEnemy(e, n, el),
+        pull: (x: number, y: number, ms: number) => e.pull(x, y, ms),
       }));
       const c = h.crane;
       if (c?.alive) list.push({ get x() { return c.sprite.x; }, get y() { return c.sprite.y + 10; }, radius: 20, hit: (n) => h.damageCrane(n) });
@@ -124,6 +131,7 @@ const VEIN_SPOTS: Record<string, Pt[]> = {
 const AUTOMATON_SPOT: Pt = { x: 0.82, y: 0.82 };
 const SEARCH_RADIUS = 12;
 const EMBER_SPLASH = 26;
+const CRUSH_STUN_MS = 700;
 const CURSOR_PICK = 24;
 const AUTO_EVERY = 300;
 const HUD_EVERY = 100;
@@ -253,8 +261,9 @@ export class FerroController {
       if (!auto) toast(`Nenhum feitiço no atalho ${'ZXC'[slot]}.`, 'warn');
       return false;
     }
-    const target = id === 'spell_ember' ? this.emberTarget(auto) : null;
-    if (id === 'spell_ember' && !target) {
+    const attack = SPELLS[id].school === 'ataque';
+    const target = attack ? this.attackTarget(id, auto) : null;
+    if (attack && !target) {
       if (!auto) toast('Nenhum alvo ao alcance.', 'warn');
       return false;
     }
@@ -303,7 +312,7 @@ export class FerroController {
       if (session.hp >= session.maxHp * 0.5 || this.shield > 0) return false;
       return this.api.enemies().some((e) => e.alive && (dist(hero, e) < 80 || (e.windingUp && dist(hero, e) <= e.radius + 8)));
     }
-    if (id === 'spell_ember') return this.emberTarget(true) !== null;
+    if (SPELLS[id].school === 'ataque') return this.attackTarget(id, true) !== null;
     if (id === 'spell_haste') return !buffActive('haste') && this.api.jobs().some((j) => dist(hero, j) < HASTE_JOB_RANGE);
     if (id === 'spell_net') return !buffActive('net') && this.api.pickups().filter((p) => dist(hero, p) < NET_LOOT_RANGE).length >= AUTO_MIN_TARGETS;
     if (id === 'spell_harvest') return this.harvestPiles().length >= AUTO_MIN_TARGETS;
@@ -319,12 +328,13 @@ export class FerroController {
       .sort((a, b) => dist(hero, a) - dist(hero, b));
   }
 
-  private emberTarget(auto: boolean): AllyTarget | null {
+  /** Attack spells aim at the enemy under the cursor (manual) or the nearest one in range. */
+  private attackTarget(id: SpellId, auto: boolean): FerroTarget | null {
     const hero = this.api.hero();
-    const range = SPELLS.spell_ember.range;
+    const range = SPELLS[id].range;
     const inRange = this.api.targets().filter((t) => dist(hero, t) <= range);
     if (!inRange.length) return null;
-    const byDist = (from: Pt) => (a: AllyTarget, b: AllyTarget) => dist(from, a) - dist(from, b);
+    const byDist = (from: Pt) => (a: FerroTarget, b: FerroTarget) => dist(from, a) - dist(from, b);
     if (!auto) {
       const aim = this.api.aim();
       const picked = [...inRange].sort(byDist(aim))[0];
@@ -333,7 +343,7 @@ export class FerroController {
     return inRange.sort(byDist(hero))[0];
   }
 
-  private playSpell(id: SpellId, target: AllyTarget | null, empowered: boolean): void {
+  private playSpell(id: SpellId, target: FerroTarget | null, empowered: boolean): void {
     const scene = this.scene;
     const hero = this.api.hero();
     const caster = this.api.caster;
@@ -347,6 +357,8 @@ export class FerroController {
         for (const t of this.api.targets()) if (dist(t, to) < EMBER_SPLASH && !sameSpot(t, target)) t.hit(splash, el);
         if (this.ally && activeSynergies(session.state).some((s) => s.id === 'resonance')) this.ally.echo(target);
       });
+    } else if ((id === 'spell_arc' || id === 'spell_crush' || id === 'spell_acid') && target) {
+      this.playAttack(id, target, power);
     } else if (id === 'spell_ward') {
       const duration = SPELLS.spell_ward.durationMs ?? 6000;
       if (this.bubble) wardBreak(scene, this.bubble);
@@ -376,6 +388,36 @@ export class FerroController {
         for (const p of piles) p.search();
       });
       toast(`${SPELLS.spell_harvest.name}: ${piles.length} ${piles.length === 1 ? 'pilha' : 'pilhas'}.`, 'loot');
+    }
+  }
+
+  private playAttack(id: 'spell_arc' | 'spell_crush' | 'spell_acid', target: FerroTarget, power: number): void {
+    const scene = this.scene;
+    const hero = this.api.hero();
+    const hand = { x: hero.x, y: hero.y - 14 };
+    const el = SPELLS[id].element;
+    if (id === 'spell_arc') {
+      const chain = chainTargets(target, [target, ...this.api.targets().filter((t) => !sameSpot(t, target))]);
+      playArc(scene, this.api.caster, hand, chain, (hop) => chain[hop].hit(chainDamage(power, hop), el));
+    } else if (id === 'spell_crush') {
+      const at = { x: target.x, y: target.y };
+      playCrush(scene, this.api.caster, hand, at, CRUSH_RADIUS,
+        () => { for (const t of crushTargets(at, this.api.targets())) t.pull?.(at.x, at.y, CRUSH_STUN_MS); },
+        () => {
+          const caught = crushTargets(at, this.api.targets());
+          const dmg = crushDamage(power, caught.length);
+          for (const t of caught) t.hit(dmg, el);
+        });
+    } else {
+      const to = { x: target.x, y: target.y };
+      playAcid(scene, this.api.caster, hand, to, ACID_RADIUS, ACID_PUDDLE_MS, () => {
+        for (const t of acidSplashTargets(to, this.api.targets())) t.hit(power, el);
+        const tick = acidTickDamage(power);
+        scene.time.addEvent({
+          delay: ACID_TICK_MS, repeat: acidTickCount() - 1,
+          callback: () => { for (const t of acidSplashTargets(to, this.api.targets())) t.hit(tick, el); },
+        });
+      });
     }
   }
 

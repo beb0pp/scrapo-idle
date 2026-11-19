@@ -14,6 +14,12 @@ Cada feitiço tem **uma família de cor**, com cinco tons: fundo, contorno (`ink
 | Pressa Rúnica | Auxílio | `#e0b33a` / `#fff2b0` | `rune_ward_w` tingido |
 | Rede Magnética | Auxílio | `#d878e0` / `#f8c8f4` | `rune_lode_w` tingido |
 | Colheita em Lote | Auxílio | `#9fd86a` / `#e8ffc8` | `rune_ember_w` tingido |
+| Arco Encadeado | Ataque (Elétrico) | `#6f9cff` / `#cfe0ff` | `rune_arc` (estrela) |
+| Prensa Magnética | Ataque (Magnético) | `#e8506a` / `#ffc0cc` | `rune_crush` (estrela) |
+| Respingo Ácido | Ataque (Corrosivo) | `#3fd49a` / `#c4ffe4` | `rune_acid` (estrela) |
+
+- Os feitiços de ataque pintam o próprio círculo na geometria de estrela da escola de ataque. A Prensa Magnética usa vermelho de ímã, porque o violeta do elemento Magnético já é do Chamado Imantado.
+- Ritmo dos ataques novos: o Arco salta de alvo a cada `ARC_HOP_MS` (90 ms) depois do impacto; a Prensa puxa no fim do círculo e esmaga `CRUSH_MS` (260 ms) depois; o Respingo deixa uma poça que corrói a cada 500 ms por 3 s.
 
 - Os feitiços de auxílio reaproveitam a geometria de um círculo existente. Usam a cópia cinza (`*_w`) com `tint`, sem pintar círculo novo.
 - Uma cor nova não pode repetir o matiz de outro feitiço.

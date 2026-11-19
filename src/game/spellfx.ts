@@ -10,6 +10,10 @@ const FX = 7004;
 export const PREP_MS = 180;
 export const CIRCLE_MS = 220;
 const TRAVEL_MS = 140;
+/** Arco Encadeado: time between one jump of the arc and the next. */
+export const ARC_HOP_MS = 90;
+/** Prensa Magnética: the pull runs this long before the crush lands. */
+export const CRUSH_MS = 260;
 export const IMPACT_DELAY: Record<SpellId, number> = {
   spell_ember: PREP_MS + CIRCLE_MS + TRAVEL_MS,
   spell_ward: PREP_MS + CIRCLE_MS,
@@ -17,6 +21,9 @@ export const IMPACT_DELAY: Record<SpellId, number> = {
   spell_haste: PREP_MS + CIRCLE_MS,
   spell_net: PREP_MS + CIRCLE_MS,
   spell_harvest: PREP_MS + CIRCLE_MS,
+  spell_arc: PREP_MS + CIRCLE_MS + TRAVEL_MS,
+  spell_crush: PREP_MS + CIRCLE_MS + CRUSH_MS,
+  spell_acid: PREP_MS + CIRCLE_MS + TRAVEL_MS,
 };
 
 const COLORS: Record<SpellId, { main: number; hi: number; rune: string; anim: string; tint?: number }> = {
@@ -26,6 +33,9 @@ const COLORS: Record<SpellId, { main: number; hi: number; rune: string; anim: st
   spell_haste: { main: 0xe0b33a, hi: 0xfff2b0, rune: 'rune_ward_w', anim: 'rune-ward-w-spin', tint: 0xffd25a },
   spell_net: { main: 0x9a6ae0, hi: 0xdcc8ff, rune: 'rune_lode_w', anim: 'rune-lode-w-spin', tint: 0xe08ae8 },
   spell_harvest: { main: 0x9fd86a, hi: 0xe8ffc8, rune: 'rune_ember_w', anim: 'rune-ember-w-spin', tint: 0xa8f070 },
+  spell_arc: { main: 0x6f9cff, hi: 0xcfe0ff, rune: 'rune_arc', anim: 'rune-arc-spin' },
+  spell_crush: { main: 0xe8506a, hi: 0xffc0cc, rune: 'rune_crush', anim: 'rune-crush-spin' },
+  spell_acid: { main: 0x3fd49a, hi: 0xc4ffe4, rune: 'rune_acid', anim: 'rune-acid-spin' },
 };
 /** Rune circles are painted round at 96 px and squashed onto the 3/4 ground plane. */
 const RUNE_PX = 96;
@@ -35,6 +45,8 @@ const SCALE_WARD = 0.6;
 const SCALE_LODE = 0.7;
 const SCALE_BUFF = 0.6;
 const SCALE_HARVEST = 0.68;
+const SCALE_ARC = 0.5;
+const SCALE_ACID = 0.6;
 const AURA_FADE_MS = 400;
 const HARVEST_STAGGER_MS = 70;
 const WHITE = 0xffffff;
@@ -46,6 +58,11 @@ const EMBER_CORE = 0xffb868;
 const WARD_CORE = 0xb8f4f6;
 const LODE_CORE = 0xc8a0ff;
 const PULL_ARROW_R = 28;
+const ARC_FLICKERS = 3;
+const ARC_FADE_MS = 140;
+const ACID_INK = 0x1e7a56;
+const ACID_LOB = 18;
+const ACID_BUBBLE_MS = 180;
 
 export type WardShield = Phaser.GameObjects.Sprite;
 
@@ -420,6 +437,156 @@ export function playHarvest(scene: Phaser.Scene, caster: Phaser.GameObjects.Spri
       burst(scene, { x: p.x, y: p.y - 6 }, 'spike_burst', 'spike-burst', c.main, 1);
       motes(scene, { x: p.x, y: p.y - 6 }, 10, c.hi, 14, false, 420, 10);
     }));
+  });
+}
+
+// ---------------- attack spells: Arco Encadeado, Prensa Magnética, Respingo Ácido ----------------
+
+/** Jagged lightning between two points: a wide main-hue stroke under a 1-px bright core, fading out. */
+function lightning(scene: Phaser.Scene, a: Pt, b: Pt, main: number, hi: number, ms = ARC_FADE_MS): void {
+  const n = Math.max(3, Math.round(Phaser.Math.Distance.Between(a.x, a.y, b.x, b.y) / 9));
+  const nx = -(b.y - a.y), ny = b.x - a.x;
+  const len = Math.hypot(nx, ny) || 1;
+  const pts: Pt[] = [a];
+  for (let i = 1; i < n; i++) {
+    const t = i / n, off = (Math.random() - 0.5) * 9;
+    pts.push({ x: Math.round(a.x + (b.x - a.x) * t + (nx / len) * off), y: Math.round(a.y + (b.y - a.y) * t + (ny / len) * off) });
+  }
+  pts.push(b);
+  const g = scene.add.graphics().setBlendMode(ADD).setDepth(FX + 2);
+  for (const [w, color, alpha] of [[3, main, 0.7], [1, hi, 1]] as const) {
+    g.lineStyle(w, color, alpha).beginPath().moveTo(pts[0].x, pts[0].y);
+    for (const p of pts.slice(1)) g.lineTo(p.x, p.y);
+    g.strokePath();
+  }
+  scene.tweens.add({ targets: g, alpha: 0, duration: ms, ease: 'Quad.easeIn', onComplete: () => g.destroy() });
+}
+
+function arcImpact(scene: Phaser.Scene, at: Pt, hop: number): void {
+  const c = COLORS.spell_arc;
+  const k = 1 - hop * 0.15;
+  burst(scene, at, 'spike_burst', 'spike-burst', c.main, 0.8 * k);
+  burst(scene, at, 'impact_burst', 'impact-burst', c.hi, 0.6 * k);
+  flash(scene, at, 18 * k, 18 * k, 90);
+  glow(scene, at, 0.5 * k, c.main, 240);
+  motes(scene, at, 8, c.hi, 14, false, 260);
+}
+
+/** Bolt from the hand to `chain[0]`, then one jump every `ARC_HOP_MS`; `onHop(i)` lands with each hit. */
+export function playArc(scene: Phaser.Scene, caster: Phaser.GameObjects.Sprite, from: Pt, chain: Pt[], onHop: (hop: number) => void): void {
+  const c = COLORS.spell_arc;
+  const aim = (p: Pt): Pt => ({ x: p.x, y: p.y - 4 });
+  prepare(scene, 'spell_arc', caster, from);
+  scene.time.delayedCall(PREP_MS, () => runeCircle(scene, 'spell_arc', { x: chain[0].x, y: chain[0].y + 4 }, SCALE_ARC, TRAVEL_MS + chain.length * ARC_HOP_MS));
+  for (let f = 0; f < ARC_FLICKERS; f++) {
+    scene.time.delayedCall(PREP_MS + CIRCLE_MS + (f * TRAVEL_MS) / ARC_FLICKERS, () => lightning(scene, from, aim(chain[0]), c.main, c.hi, TRAVEL_MS / ARC_FLICKERS + 40));
+  }
+  scene.time.delayedCall(PREP_MS + CIRCLE_MS, () => glow(scene, from, 0.4, c.hi, 180));
+  chain.forEach((t, hop) => scene.time.delayedCall(PREP_MS + CIRCLE_MS + TRAVEL_MS + hop * ARC_HOP_MS, () => {
+    lightning(scene, hop > 0 ? aim(chain[hop - 1]) : from, aim(t), c.main, c.hi);
+    onHop(hop);
+    arcImpact(scene, aim(t), hop);
+    if (hop === 0) scene.cameras.main.shake(80, 0.003);
+  }));
+}
+
+/** Rune circle at `at`; the field drags enemies in (`onPull`), then the jaws slam shut (`onImpact`). */
+export function playCrush(scene: Phaser.Scene, caster: Phaser.GameObjects.Sprite, hand: Pt, at: Pt, radius: number, onPull: () => void, onImpact: () => void): void {
+  const c = COLORS.spell_crush;
+  const core = { x: at.x, y: at.y - 6 };
+  prepare(scene, 'spell_crush', caster, hand);
+  scene.time.delayedCall(PREP_MS, () => {
+    runeCircle(scene, 'spell_crush', { x: at.x, y: at.y + 2 }, (radius * 2) / RUNE_PX, CRUSH_MS + 120);
+    pullArrows(scene, core, radius, c.hi, CIRCLE_MS + CRUSH_MS, 0);
+    contractRing(scene, at, radius, c.main, CIRCLE_MS + CRUSH_MS);
+  });
+  scene.time.delayedCall(PREP_MS + CIRCLE_MS, () => {
+    onPull();
+    fieldStreaks(scene, core, radius, c.hi, c.main, 12, CRUSH_MS);
+    contractRing(scene, at, radius * 0.8, c.hi, CRUSH_MS);
+  });
+  scene.time.delayedCall(PREP_MS + CIRCLE_MS + CRUSH_MS, () => {
+    onImpact();
+    flash(scene, core, 34, 24, 120);
+    burst(scene, core, 'spike_burst', 'spike-burst', c.main, 1.5);
+    burst(scene, core, 'impact_burst', 'impact-burst', c.hi, 1.1);
+    glow(scene, core, 1, c.main, 380);
+    ring(scene, { x: at.x, y: at.y + 2 }, 6, radius * 0.7, c.hi, 320, 0.5, 3);
+    motes(scene, core, 18, c.main, 26, false, 380, 6);
+    scene.cameras.main.shake(140, 0.007);
+  });
+}
+
+/** Acid glob lobbed from the hand; on landing it splashes (`onImpact`) and leaves a bubbling puddle for `puddleMs`. */
+export function playAcid(scene: Phaser.Scene, caster: Phaser.GameObjects.Sprite, from: Pt, to: Pt, radius: number, puddleMs: number, onImpact: () => void): void {
+  const c = COLORS.spell_acid;
+  const ground = { x: to.x, y: to.y + 4 };
+  prepare(scene, 'spell_acid', caster, from);
+  scene.time.delayedCall(PREP_MS, () => runeCircle(scene, 'spell_acid', ground, SCALE_ACID, TRAVEL_MS + 120));
+  scene.time.delayedCall(PREP_MS + CIRCLE_MS, () => {
+    const glob = scene.add.container(from.x, from.y, [
+      scene.add.rectangle(0, 0, 6, 6, c.main), scene.add.rectangle(-1, -1, 3, 3, c.hi), scene.add.rectangle(-1, -1, 1, 1, WHITE),
+    ]).setDepth(FX + 2);
+    glob.each((o: Phaser.GameObjects.Rectangle) => o.setBlendMode(ADD));
+    glow(scene, from, 0.35, c.hi, 160);
+    scene.tweens.addCounter({
+      from: 0, to: 1, duration: TRAVEL_MS, ease: 'Linear',
+      onUpdate: (tw) => {
+        const t = tw.getValue() ?? 0;
+        glob.setPosition(Math.round(from.x + (to.x - from.x) * t), Math.round(from.y + (to.y - from.y) * t - Math.sin(t * Math.PI) * ACID_LOB));
+        const d = dot(scene, glob.x, glob.y, 1, Math.random() < 0.5 ? c.main : c.hi);
+        scene.tweens.add({ targets: d, y: d.y + 6, alpha: 0, duration: 200, onComplete: () => d.destroy() });
+      },
+      onComplete: () => {
+        glob.destroy();
+        onImpact();
+        acidSplash(scene, to, radius);
+        acidPuddle(scene, ground, radius, puddleMs);
+      },
+    });
+  });
+}
+
+function acidSplash(scene: Phaser.Scene, at: Pt, radius: number): void {
+  const c = COLORS.spell_acid;
+  flash(scene, at, 26, 18, 110);
+  burst(scene, at, 'impact_burst', 'impact-burst', c.main, 0.9);
+  glow(scene, at, 0.8, c.main, 320);
+  ring(scene, { x: at.x, y: at.y + 4 }, 4, radius, c.hi, 300, 0.5, 2);
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 + Math.random() * 0.3;
+    const speed = 20 + Math.random() * 16;
+    const x0 = at.x, y0 = at.y, vx = Math.cos(a) * speed, vy = Math.sin(a) * speed * 0.6 - 22;
+    const s = scene.add.rectangle(x0, y0, 2, 2, i % 3 ? c.main : c.hi).setBlendMode(ADD).setDepth(FX + 1);
+    scene.tweens.addCounter({
+      from: 0, to: 1, duration: 380 + Math.random() * 120,
+      onUpdate: (tw) => {
+        const t = tw.getValue() ?? 0;
+        s.setPosition(Math.round(x0 + vx * t), Math.round(y0 + vy * t + 50 * t * t)).setAlpha(1 - t * t);
+      },
+      onComplete: () => s.destroy(),
+    });
+  }
+}
+
+/** Corrosive puddle: normal blend so the green stays readable, bubbles popping until it dries. */
+function acidPuddle(scene: Phaser.Scene, at: Pt, radius: number, ms: number): void {
+  const c = COLORS.spell_acid;
+  const pool = scene.add.ellipse(at.x, at.y, radius * 2, radius * 2 * GROUND_FLAT, c.main, 0.42).setStrokeStyle(1, ACID_INK, 0.9).setDepth(at.y - 3).setScale(0.2);
+  const sheen = scene.add.ellipse(at.x - radius * 0.2, at.y - 2, radius * 0.8, radius * 0.25, c.hi, 0.35).setDepth(at.y - 2).setAlpha(0);
+  scene.tweens.add({ targets: pool, scale: 1, duration: 160, ease: 'Back.easeOut' });
+  scene.tweens.add({ targets: sheen, alpha: 0.5, duration: 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  const bubbles = scene.time.addEvent({
+    delay: ACID_BUBBLE_MS, loop: true,
+    callback: () => {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * radius * 0.8;
+      rising(scene, { x: at.x + Math.cos(a) * r, y: at.y + Math.sin(a) * r * GROUND_FLAT }, 1, [Math.random() < 0.5 ? c.hi : WHITE], 1, 8, 400, 0);
+    },
+  });
+  scene.time.delayedCall(ms, () => {
+    bubbles.remove();
+    scene.tweens.killTweensOf(sheen);
+    scene.tweens.add({ targets: [pool, sheen], alpha: 0, scaleX: 1.1, duration: 360, onComplete: () => { pool.destroy(); sheen.destroy(); } });
   });
 }
 

@@ -240,6 +240,9 @@ body:has(#spellbar) #prompt { bottom: calc(var(--hud-bottom-h, 70px) + 86px); }
 .sp-spell_haste, .fe-spell[data-spell='spell_haste'], .spell-slot[data-spell-id='spell_haste'] { --sh: #ffe27a; --sg: rgba(224, 179, 58, 0.45); }
 .sp-spell_net, .fe-spell[data-spell='spell_net'], .spell-slot[data-spell-id='spell_net'] { --sh: #f0a8f0; --sg: rgba(216, 120, 224, 0.45); }
 .sp-spell_harvest, .fe-spell[data-spell='spell_harvest'], .spell-slot[data-spell-id='spell_harvest'] { --sh: #c4f08e; --sg: rgba(159, 216, 106, 0.45); }
+.sp-spell_arc, .fe-spell[data-spell='spell_arc'], .spell-slot[data-spell-id='spell_arc'] { --sh: #a8c4ff; --sg: rgba(111, 156, 255, 0.45); }
+.sp-spell_crush, .fe-spell[data-spell='spell_crush'], .spell-slot[data-spell-id='spell_crush'] { --sh: #ff98aa; --sg: rgba(232, 80, 106, 0.45); }
+.sp-spell_acid, .fe-spell[data-spell='spell_acid'], .spell-slot[data-spell-id='spell_acid'] { --sh: #8ef0c6; --sg: rgba(63, 212, 154, 0.45); }
 img.fe-spell-ico, img.fe-bico, img.spell-ico { background: #0b0910; border: 1px solid var(--sh, #d8c8ff); image-rendering: pixelated; }
 img.fe-spell-ico { padding: 7px; box-shadow: inset 0 0 10px var(--sg), 0 0 0 1px #0b0910, 0 0 8px var(--sg); }
 img.fe-bico { width: 56px; height: 56px; padding: 3px; box-shadow: inset 0 0 6px var(--sg), 0 0 0 1px #0b0910, 0 0 8px var(--sg); }
