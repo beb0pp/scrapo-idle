@@ -29,7 +29,7 @@ O E2E usa o Chrome instalado (`channel: 'chrome'`), cada teste tem `localStorage
 | Ícones | 21 ícones de itens redesenhados no estilo da referência 08; contador de créditos pulsa ao vender. | registro final |
 | Auto (2ª rodada) | Castigo para inimigos inalcançáveis; sai de mapa esgotado. | registro final |
 | Herói adulto | Pedido do usuário (visual infantil): `tools/adultify-hero.py` refaz a base a partir da mesma referência com cabeça ~25% menor, corpo mais longo, olhos pequenos e escuros e paleta dessaturada/envelhecida; mesma folha de 20 quadros. | registro final |
-| Vista de costas | Quadros 15–19 do herói gerados da arte frontal; `hero-idle-up`/`hero-walk-up` ao andar para cima. | registro final |
+| Vistas de costas e de lado | Quadros 15–19 (costas) e 20–24 (lado) gerados da arte base; animações escolhidas pela direção do movimento. | registro final |
 | Docs | README documenta T, Auto e Ferrugem; este arquivo. | `bbdd8a3` e registro final |
 
 ### Arte externa (busca e decisão)
@@ -85,7 +85,7 @@ Rodada anterior: s3 teve 2 travas (masmorra esgotada sem plano B e perseguição
 ## Pendências
 
 1. **Estilo do herói**: versão adulta aplicada (ver tabela). Se o usuário gerar uma nova referência, basta trocar o arquivo e rodar `python tools/adultify-hero.py <ref>` (ou `pixelize-ref.py` para manter proporções) seguido de `python tools/bake-sprites.py`.
-2. Herói tem vista frontal (espelhada para os lados) e vista de costas derivada da frontal (rosto vira nuca, chave troca de lado: quadros 15–19, usados ao andar para cima). Perfil verdadeiro depende de uma folha de animação gerada com o mesmo personagem.
+2. Herói tem três vistas derivadas da mesma arte: frente (0–14), costas (15–19, rosto vira nuca) e lado (20–24, cabeça à frente, tronco estreitado, olho distante oculto; espelhada para a esquerda). Conferido no navegador: andar à esquerda/direita usa `hero-walk-side`, para cima `hero-walk-up`, para baixo `hero-walk`, parado de lado `hero-idle-side`. Um perfil pintado à mão ou gerado continua sendo uma melhoria possível, e a aprovação visual final do herói adulto é do usuário.
 3. A extração AFK conta ciclos só com a aba aberta; ao fechar, guarda os ciclos concluídos (decisão de design original, coberta pelo E2E).
 4. Inimigos novos são pequenos no zoom 2; avaliar escala depois de o usuário jogar.
 5. Em espera neste alpha: Ferromancia (sessão própria em `feat/ferromancia`), Kick e backend.

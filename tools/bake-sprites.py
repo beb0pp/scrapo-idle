@@ -70,12 +70,39 @@ def back_view(base: Image.Image) -> Image.Image:
     return out.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
 
 
+SKIN = (226, 160, 120, 255)
+
+
+def side_view(base: Image.Image) -> Image.Image:
+    """Turned toward the wrench side: head shifted forward (hair stays behind), far eye hidden, torso narrowed."""
+    out = Image.new('RGBA', base.size)
+    torso = base.crop((0, 19, base.width, base.height))
+    # drop 4 columns from the back of the torso so the body reads narrower in profile
+    narrow = Image.new('RGBA', torso.size)
+    narrow.alpha_composite(torso.crop((0, 0, 8, torso.height)), (4, 0))
+    narrow.alpha_composite(torso.crop((12, 0, torso.width, torso.height)), (12, 0))
+    out.alpha_composite(narrow, (0, 19))
+    head = base.crop((0, 0, base.width, 19))
+    out.alpha_composite(head, (0, 0))
+    out.alpha_composite(head.crop((8, 0, 34, 19)), (10, 0))
+    px = out.load()
+    for y in range(11, 18):
+        for x in range(14, 22):
+            r, g, b, a = px[x, y]
+            if a and r < 60 and g < 60 and b < 70:
+                left, right = px[x - 1, y], px[x + 1, y]
+                if left[0] > 180 or right[0] > 180:
+                    px[x, y] = SKIN
+    return out
+
+
 def hero_frames() -> list[Image.Image]:
     base = Image.open(SRC / 'hero_base.png').convert('RGBA')
     front = build_hero(base)
     back = build_hero(back_view(base), wrench_side='left')
-    # 0-14 front set, 15-19 back set (idle, walk x4)
-    return front + [back[0], back[2], back[3], back[4], back[5]]
+    side = build_hero(side_view(base))
+    # 0-14 front set, 15-19 back set (idle, walk x4), 20-24 side set (idle, walk x4)
+    return front + [back[0], back[2], back[3], back[4], back[5]] + [side[0], side[2], side[3], side[4], side[5]]
 
 
 def build_hero(base: Image.Image, wrench_side: str = 'right') -> list[Image.Image]:
