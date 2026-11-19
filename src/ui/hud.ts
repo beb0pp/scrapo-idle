@@ -58,8 +58,8 @@ export function initHud(): void {
     </div>
     <div id="drone-badge" class="drone-badge"></div>`;
   $('hud').addEventListener('click', handleHudClick);
-  // a mouse click must not leave Atacar/Usar focused, or the next Space/F press would fire it twice
-  document.querySelector('.act-stack')!.addEventListener('mousedown', (event) => event.preventDefault());
+  // a mouse click must not leave a HUD button focused, or the next Space/Enter press would click it again
+  $('hud').addEventListener('mousedown', (event) => { if ((event.target as HTMLElement).closest('button')) event.preventDefault(); });
   // narrow screens wrap the footer; the spell bar and prompt sit on top of whatever height it ends up
   new ResizeObserver(([entry]) => {
     const height = Math.round(entry.contentRect.height);
