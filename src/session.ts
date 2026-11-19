@@ -1,4 +1,5 @@
 import { claimAfk, endAfk, finalizeAfterReload, settleFull, startAfk } from './core/afk';
+import { playerStats } from './core/derived';
 import { loadState, saveState, SAVE_KEY, type KeyValueStore } from './core/save';
 import { newGame, type AfkEndReason, type GameState } from './core/state';
 import type { Result } from './core/economy';
@@ -15,7 +16,10 @@ const HEARTBEAT_MS = 2000;
 export class Session {
   state: GameState;
   hp = 100;
-  readonly maxHp = 100;
+  /** Base 100 plus the Vida bonus of the equipped gear. */
+  get maxHp(): number {
+    return playerStats(this.state).vida;
+  }
   /** Runtime only: pile id -> time it was searched. */
   readonly searchedPiles = new Map<string, number>();
   /** Runtime only: hero plays by himself (fights, salvages, collects). */

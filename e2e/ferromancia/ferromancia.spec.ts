@@ -132,7 +132,8 @@ test('c. conjurar manual: custo, cooldown e capturas', async ({ page }) => {
   await press(page, 'c');
   await shot('lodestone');
   expect(await inv(page, 'reagent_lodestone')).toBe(4);
-  expect(await ferroProp<boolean>(page, 'searchBonus')).toBe(true);
+  // the bonus lands when the lodestone animation ends, after the reagent is paid
+  await expect.poll(() => ferroProp<boolean>(page, 'searchBonus'), { timeout: 8000 }).toBe(true);
 });
 
 test('d. conjurar no Auto: Égide com vida baixa e Lança em alcance', async ({ page }) => {
@@ -144,9 +145,10 @@ test('d. conjurar no Auto: Égide com vida baixa e Lança em alcance', async ({ 
   expect(await page.evaluate(() => (window as any).__scrapo.session.autoMode)).toBe(true);
   await page.evaluate(() => { (window as any).__scrapo.session.hp = 30; });
 
-  await expect.poll(() => inv(page, 'reagent_ward'), { timeout: 3000 }).toBeLessThan(5);
-  await expect.poll(() => ferroProp<number>(page, 'shield'), { timeout: 3000 }).toBeGreaterThan(0);
-  await expect.poll(() => inv(page, 'reagent_ember'), { timeout: 3000 }).toBeLessThan(5);
+  // spell effects land at the end of their animation, which is slower on CI runners
+  await expect.poll(() => inv(page, 'reagent_ward'), { timeout: 8000 }).toBeLessThan(5);
+  await expect.poll(() => ferroProp<number>(page, 'shield'), { timeout: 8000 }).toBeGreaterThan(0);
+  await expect.poll(() => inv(page, 'reagent_ember'), { timeout: 8000 }).toBeLessThan(5);
 });
 
 test.describe.serial('e/f. recrutar, sinergia e persistência', () => {

@@ -208,15 +208,20 @@ export function salvageHit(scene: Phaser.Scene, at: Pt): void {
   puffs(scene, p, 1);
 }
 
-function floatingText(scene: Phaser.Scene, at: Pt, text: string, color: string, size: number, rise: number): void {
+const PIXEL_FONT = 'Pixelify Sans';
+// Pixelify's 5/8/9 blur together at small sizes; numbers use a plain bold face that keeps them distinct
+const DIGIT_FONT = 'Verdana, "Trebuchet MS", sans-serif';
+
+function floatingText(scene: Phaser.Scene, at: Pt, text: string, color: string, size: number, rise: number, font = PIXEL_FONT): void {
   const t = scene.add
-    .text(at.x, at.y, text, { fontFamily: 'Pixelify Sans', fontSize: `${size}px`, color, stroke: '#1b1a24', strokeThickness: 3 })
+    .text(at.x, at.y, text, { fontFamily: font, fontStyle: 'bold', fontSize: `${size * 2}px`, color, stroke: '#0c0a12', strokeThickness: 4 })
     .setOrigin(0.5, 1)
-    .setResolution(4)
-    .setDepth(FX + 2)
-    .setScale(0.6);
-  scene.tweens.add({ targets: t, scale: 1, duration: 90, ease: 'Back.easeOut' });
-  scene.tweens.add({ targets: t, y: at.y - rise, alpha: 0, delay: 250, duration: 500, ease: 'Quad.easeIn', onComplete: () => t.destroy() });
+    .setDepth(FX + 2);
+  // same on-screen size at every camera zoom (font px = screen px), so 5, 8 and 9 stay readable
+  const fit = 1 / scene.cameras.main.zoom;
+  t.setScale(fit * 0.6);
+  scene.tweens.add({ targets: t, scale: fit, duration: 90, ease: 'Back.easeOut' });
+  scene.tweens.add({ targets: t, y: at.y - rise, alpha: 0, delay: 450, duration: 550, ease: 'Quad.easeIn', onComplete: () => t.destroy() });
 }
 
 /** Text flourish when something is interrupted or broken (e.g. the crane's magnet line). */
@@ -249,5 +254,5 @@ export function lootPopup(scene: Phaser.Scene, at: Pt, iconKey: string, text: st
 
 /** Damage number popping out of a hit target. */
 export function damageNumber(scene: Phaser.Scene, at: Pt, amount: number, crit = false): void {
-  floatingText(scene, { x: at.x + Phaser.Math.Between(-3, 3), y: at.y - 6 }, String(Math.round(amount)), crit ? '#e0b33a' : '#ffffff', crit ? 10 : 8, 12);
+  floatingText(scene, { x: at.x + Phaser.Math.Between(-3, 3), y: at.y - 6 }, String(Math.round(amount)), crit ? '#ffd45a' : '#ffffff', crit ? 10 : 8, 14, DIGIT_FONT);
 }

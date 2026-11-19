@@ -123,7 +123,7 @@ test('a version 1 save from an earlier build still loads', async ({ page }) => {
   });
   await enterGame(page);
   const s = await page.evaluate(() => (window as any).__scrapo.session.state);
-  expect(s.version).toBe(2);
+  expect(s.version).toBe(3); // v1 migrates straight to the current save (v3, with the Ferromancia block)
   expect(s.currency).toBe(42);
   expect(s.inventory.scrap).toBe(7);
   expect(s.equipped.tool).toBe('tool_wrench_old');

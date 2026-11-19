@@ -99,7 +99,7 @@ button.primary { background: #6d4a12; border-color: var(--amber); }
 .skill .cd { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; height: 0; background: rgba(9, 8, 14, 0.68); pointer-events: none; }
 .skill.is-locked { opacity: 0.45; filter: grayscale(1); }
 .drone-badge { position: absolute; bottom: 10px; right: 10px; display: flex; gap: 6px; align-items: center; background: rgba(27, 26, 36, 0.86); border: 2px solid var(--line); padding: 4px 8px; font-size: 13px; }
-#prompt { position: absolute; bottom: 74px; left: 50%; transform: translateX(-50%); background: rgba(27, 26, 36, 0.92); border: 2px solid var(--amber); padding: 4px 10px; pointer-events: none; }
+#prompt { position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%); background: rgba(27, 26, 36, 0.92); border: 2px solid var(--amber); padding: 4px 10px; pointer-events: none; }
 #boss { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: min(380px, 70vw); text-align: center; background: rgba(27, 26, 36, 0.9); border: 2px solid var(--red); padding: 4px 8px; }
 #boss .bar i { background: var(--red); }
 
@@ -683,3 +683,21 @@ body[data-inv-dock='left'] #objective { opacity: 0; }
 }
 @keyframes area-banner-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes area-banner-fade-out { to { opacity: 0; } }
+
+/* Pixelify's 2/5/8/9 blur together at small sizes: numbers use a plain bold face */
+#hp-num, #money, .money, .mo-qty, .mo-stat-val, .mo-cap {
+  font-family: Verdana, 'Trebuchet MS', sans-serif;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bigger, outlined labels: Pixelify letters blur below ~12px */
+.skill { width: 72px; height: 70px; padding: 2px 1px 4px; }
+.skill span { font-size: 12px; line-height: 13px; letter-spacing: 0; white-space: nowrap; background: none; text-shadow: 1px 0 0 #0c0a12, -1px 0 0 #0c0a12, 0 1px 0 #0c0a12, 0 -1px 0 #0c0a12; }
+.skill-key { font-size: 12px; min-width: 18px; text-align: center; }
+.tool-slot b { font-size: 12px; }
+@media (max-width: 640px) {
+  .skill { width: 58px; height: 64px; }
+  .skill span { font-size: 11px; }
+}
+.skill[data-skill="3"] span { font-size: 11px; letter-spacing: -0.4px; }

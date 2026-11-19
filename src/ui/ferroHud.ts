@@ -102,7 +102,7 @@ function renderSpellbar(): void {
   const state = session.state;
   const slots = SPELL_KEYS.map((key, slot) => {
     const id = state.ferro.loadout[slot];
-    if (!id) return `<button class="spell-slot is-empty" data-spell-slot="${slot}" title="Vazio — clique para equipar um feitiço"><b>${key}</b><span>vazio</span><i class="cd"></i></button>`;
+    if (!id) return `<button class="spell-slot is-empty" data-spell-slot="${slot}" title="Vazio — clique para equipar um feitiço"><b>${key}</b><span class="spell-ico spell-ico--empty" aria-hidden="true">+</span><span>Equipar</span><i class="cd"></i></button>`;
     const spell = SPELLS[id];
     const reagent = Object.keys(spell.cost)[0] as ItemId;
     const have = countOf(state, reagent);
@@ -114,7 +114,7 @@ function renderSpellbar(): void {
     return `<button class="spell-slot${boosted ? ' is-boosted' : ''}" data-spell-slot="${slot}" data-spell-id="${id}" title="${esc(spell.name)} (${key})" aria-label="${label}">`
       + `<b>${key}</b>${art}<span>${esc(spell.name)}</span><em class="spell-mana">◆${spell.mana}</em>${boost}<i class="cd"></i></button>`;
   }).join('');
-  bar.innerHTML = `${slots}<button id="ferro-btn" class="spell-slot ferro-btn" title="Abrir Ferromancia (K)"><b>K</b><span>Ferromancia</span></button>`;
+  bar.innerHTML = `${slots}<button id="ferro-btn" class="spell-slot ferro-btn" title="Abrir Ferromancia (K)"><b>K</b><span class="spell-ico spell-ico--ferro" aria-hidden="true">⚗</span><span>Ferromancia</span></button>`;
   applyCooldowns(bar);
   applyMana(bar);
 }
