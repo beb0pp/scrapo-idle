@@ -280,16 +280,10 @@ const ICON_ART: Record<ItemId, (c: CanvasRenderingContext2D) => void> = {
 
 export const iconUrls: Partial<Record<ItemId, string>> = {};
 
-/** Data URL of the hero standing, front view (24×32). Scale it up with image-rendering: pixelated. */
-export let heroPortraitUrl = '';
+/** Hero standing (64×72 frame from the baked sheet). Scale it up with image-rendering: pixelated. */
+export const heroPortraitUrl = 'sprites/hero-portrait.png';
 
 export function buildSprites(scene: Phaser.Scene): void {
-  sheet(scene, 'hero', HERO_FRAMES, HERO_PAL, 24, 32);
-  const portrait = document.createElement('canvas');
-  portrait.width = 24;
-  portrait.height = 32;
-  drawRows(portrait.getContext('2d')!, HERO_FRAMES[0], 0, 0, HERO_PAL);
-  heroPortraitUrl = portrait.toDataURL();
   buildProps(scene);
 
   canvasTex(scene, 'wrench', 16, 16, 1, (c) => {
@@ -299,51 +293,6 @@ export function buildSprites(scene: Phaser.Scene): void {
     r(c, '#c4c9cf', 10, 2, 4, 4);
     r(c, '#1b1a24', 12, 1, 3, 3);
     r(c, '#e0e4ea', 10, 2, 1, 1);
-  });
-
-  // Ferrugem faces right: a compact riveted plate body with an alternating four-paw run.
-  canvasTex(scene, 'robodog', 24, 18, 2, (c, f, ox) => {
-    const k = '#14121e';
-    const iron = '#2a2d38';
-    const steel = '#4a5468';
-    const steelHi = '#7b8aa3';
-    const copper = '#d7833b';
-    const rust = '#a8481e';
-    const teal = '#5fd0d8';
-
-    // Raised spring tail, rear haunch, then the plated body.
-    r(c, k, ox + 0, 2, 2, 6); r(c, steelHi, ox + 1, 2, 1, 2);
-    r(c, k, ox + 1, 1, 2, 2); r(c, rust, ox + 2, 1, 1, 1);
-    r(c, k, ox + 2, 7, 3, 6); r(c, rust, ox + 3, 8, 2, 4); r(c, copper, ox + 3, 8, 2, 1);
-    r(c, k, ox + 4, 6, 13, 8); r(c, steel, ox + 5, 7, 11, 6); r(c, steelHi, ox + 5, 7, 8, 2);
-    r(c, iron, ox + 5, 11, 11, 2); r(c, copper, ox + 6, 8, 1, 1); r(c, copper, ox + 14, 12, 1, 1);
-
-    // Copper power core: riveted ring and a turquoise alchemical triangle.
-    r(c, k, ox + 8, 8, 5, 5); r(c, rust, ox + 9, 9, 3, 3); r(c, copper, ox + 9, 9, 2, 1);
-    r(c, teal, ox + 10, 9, 1, 1); r(c, teal, ox + 9, 11, 3, 1); r(c, teal, ox + 11, 10, 1, 1);
-    r(c, copper, ox + 8, 9, 1, 1); r(c, copper, ox + 12, 11, 1, 1);
-
-    // Large head, folded front ear, upright rear ear, and friendly square muzzle.
-    r(c, k, ox + 14, 2, 8, 9); r(c, steel, ox + 15, 3, 6, 6); r(c, steelHi, ox + 15, 3, 4, 2);
-    r(c, k, ox + 15, 0, 4, 4); r(c, steelHi, ox + 16, 1, 2, 2); r(c, copper, ox + 16, 1, 1, 1);
-    r(c, k, ox + 19, 2, 4, 4); r(c, rust, ox + 20, 3, 2, 2); r(c, copper, ox + 20, 3, 1, 1);
-    r(c, teal, ox + 19, 5, 1, 1); r(c, '#ffffff', ox + 19, 5, 1, 1);
-    r(c, k, ox + 20, 7, 4, 4); r(c, '#b8bcc4', ox + 20, 8, 3, 2); r(c, '#e0e4ea', ox + 20, 8, 2, 1);
-    r(c, '#e8b080', ox + 22, 8, 1, 1); r(c, k, ox + 21, 10, 2, 1);
-
-    // Scarf/collar and dangling knot at the chest.
-    r(c, k, ox + 15, 10, 5, 3); r(c, '#d06a2a', ox + 16, 10, 3, 2); r(c, '#e88a3e', ox + 16, 10, 2, 1);
-    r(c, k, ox + 18, 12, 2, 3); r(c, rust, ox + 19, 12, 1, 2);
-
-    const legs = f ? [5, 9, 13, 17] : [6, 10, 12, 16];
-    legs.forEach((x, i) => {
-      const kneeY = f && i % 2 === 0 ? 13 : 12;
-      r(c, k, ox + x, 13, 3, 4);
-      r(c, iron, ox + x + 1, 13, 1, 2);
-      r(c, rust, ox + x + 1, kneeY, 1, 1);
-      r(c, k, ox + x - 1, 16, 4, 2);
-      r(c, steelHi, ox + x, 16, 2, 1);
-    });
   });
 
   canvasTex(scene, 'marker', 10, 6, 1, (c) => {
@@ -449,14 +398,24 @@ export function buildSprites(scene: Phaser.Scene): void {
 
   const anim = (key: string, tex: string, frames: number[], rate: number) =>
     scene.anims.create({ key, frames: frames.map((frame) => ({ key: tex, frame })), frameRate: rate, repeat: -1 });
-  anim('hero-down', 'hero', [0, 1], 6);
-  anim('hero-up', 'hero', [2, 3], 6);
-  anim('hero-side', 'hero', [4, 5], 6);
+  const once = (key: string, tex: string, frames: number[], rate: number) =>
+    scene.anims.create({ key, frames: frames.map((frame) => ({ key: tex, frame })), frameRate: rate, repeat: 0 });
+  // public/sprites/hero.png, baked by tools/bake-sprites.py (frame order documented there)
+  anim('hero-idle', 'hero', [0, 0, 1, 1], 3);
+  anim('hero-walk', 'hero', [2, 3, 4, 5], 9);
+  once('hero-attack', 'hero', [6, 7, 8], 20);
+  anim('hero-collect', 'hero', [9, 10], 1000 / 120);
+  once('hero-hurt', 'hero', [11], 6);
+  once('hero-dash', 'hero', [12], 6);
+  once('hero-cast', 'hero', [13, 14], 10);
+  anim('dog-idle', 'robodog', [0, 1], 2);
+  anim('dog-run', 'robodog', [2, 3, 4, 5], 12);
+  once('dog-bite', 'robodog', [6, 7, 6], 14);
+  anim('dog-fetch', 'robodog', [8, 0], 6);
   anim('vendor-idle', 'vendor', [0, 1], 2);
   anim('sorter-walk', 'sorter', [0, 1], 5);
   anim('press-walk', 'press', [0, 1], 3);
   anim('drone-fly', 'drone', [0, 1], 12);
-  anim('dog-run', 'robodog', [0, 1], 10);
   anim('crane-idle', 'crane', [0, 1], 3);
   anim('pile-glint', 'pile', [0, 1], 2);
   anim('relic-pulse', 'relic', [0, 1], 3);

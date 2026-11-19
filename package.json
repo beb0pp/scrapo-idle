@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "maps": "node tools/build-maps.ts"
   },
@@ -16,6 +17,7 @@
     "phaser": "3.90.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "typescript": "~5.9.3",
     "vite": "~7.3.8",
     "vitest": "~3.2.4"

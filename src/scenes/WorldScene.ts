@@ -35,6 +35,7 @@ export type MapId = 'patio' | 'yard' | 'dungeon';
 const SPEED = 82;
 /** Hero sprite is 24×32 with a centered origin; feet sit 9px below. */
 const FEET = 9;
+const HERO_SCALE = 0.5;
 const ATTACK_REACH = 20;
 
 type Order =
@@ -54,6 +55,8 @@ interface Interactable {
   sprite?: Phaser.GameObjects.Image;
   /** Auto mode may pick this as a job (piles and salvageable junk). */
   auto?: boolean;
+  /** Exit to this map: auto mode walks here when the current map has nothing left to do. */
+  goto?: MapId;
   /** Click area in world space, when it is not the sprite bounds or a small circle. */
   rect?: Phaser.Geom.Rectangle;
 }
@@ -137,16 +140,17 @@ export class WorldScene extends Phaser.Scene {
   private collision!: Phaser.Tilemaps.TilemapLayer;
   private craneIntroShown = false;
   private order: Order | null = null;
-  private wrench!: Phaser.GameObjects.Image;
+  private action: { key: string; until: number } | null = null;
   private shadow!: Phaser.GameObjects.Ellipse;
   private heroRing!: Phaser.GameObjects.Ellipse;
   private lastHurt = 0;
   private lastManual = -10_000;
   private autoNext = 0;
   private evadeUntil = 0;
+  private modalSince = 0;
+  private autoStuck = { x: 0, y: 0, since: 0 };
   private autoTarget: Interactable | null = null;
   private autoSkip = new Map<Interactable, number>();
-  private swingUntil = 0;
   private holdMoveAt = 0;
 
   constructor() {
@@ -190,13 +194,14 @@ export class WorldScene extends Phaser.Scene {
     const spawn = objects.find((o) => o.type === 'spawn' && o.name === this.entry) ?? objects.find((o) => o.type === 'spawn' && o.name === 'default') ?? objects.find((o) => o.type === 'spawn');
     const sp = spawn ? center(spawn) : { x: 64, y: 64 };
 
-    this.player = this.physics.add.sprite(sp.x, sp.y - FEET, 'hero', 0);
-    (this.player.body as Phaser.Physics.Arcade.Body).setSize(10, 6).setOffset(7, 22).setCollideWorldBounds(true);
+    // 64x72 frames drawn at half scale: origin keeps the feet FEET px below the sprite position
+    this.player = this.physics.add.sprite(sp.x, sp.y - FEET, 'hero', 0).setScale(HERO_SCALE).setOrigin(0.5, 0.7222);
+    this.player.setData('baseScale', HERO_SCALE).play('hero-idle');
+    (this.player.body as Phaser.Physics.Arcade.Body).setSize(20, 12).setOffset(22, 58).setCollideWorldBounds(true);
     this.shadow = this.add.ellipse(sp.x, sp.y, 14, 5, 0x000000, 0.35);
     // Keep the hero readable in a busy yard: a pulsing ground ring and a soft rim glow.
     this.heroRing = this.add.ellipse(sp.x, sp.y, 22, 9).setStrokeStyle(2, 0xf6c84a, 0.95).setFillStyle(0xf6c84a, 0.14);
     this.tweens.add({ targets: this.heroRing, scaleX: 1.18, scaleY: 1.18, alpha: 0.65, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.wrench = this.add.image(sp.x, sp.y, 'wrench').setOrigin(0.2, 0.85);
     this.physics.add.collider(this.player, this.collision);
     this.player.preFX?.addGlow(0xfff2b0, 3, 0, false, 0.1, 6);
     this.lastManual = -10_000;
@@ -236,7 +241,7 @@ export class WorldScene extends Phaser.Scene {
     applyZoom(this, map.widthInPixels, map.heightInPixels);
     cam.fadeIn(200);
 
-    this.keys = this.input.keyboard!.addKeys('UP,DOWN,LEFT,RIGHT,SPACE,Q,W,E,R,F,ONE,TWO,THREE,FOUR') as Record<string, Phaser.Input.Keyboard.Key>;
+    this.keys = this.input.keyboard!.addKeys('UP,DOWN,LEFT,RIGHT,SPACE,Q,W,E,R,F') as Record<string, Phaser.Input.Keyboard.Key>;
     onSkillClick((i) => [() => this.pulse(), () => this.arc(), () => this.dash(), () => this.overdrive()][i]());
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onPointerDown(p));
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.onPointerMove(p));
@@ -341,7 +346,7 @@ export class WorldScene extends Phaser.Scene {
         const hit = new Phaser.Geom.Rectangle(rect.x - 16, rect.y - 8, rect.width + 32, rect.height + 16);
         const label = prop(o, 'label') ?? 'próxima área';
         this.interactables.push({
-          x: rect.centerX, y: rect.centerY, r: 30, rect: hit,
+          x: rect.centerX, y: rect.centerY, r: 30, rect: hit, goto: prop(o, 'target') as MapId,
           label: () => `F — Ir para ${label}`,
           act: () => this.moveTo(new Phaser.Math.Vector2(rect.centerX, rect.centerY), false),
         });
@@ -434,6 +439,7 @@ export class WorldScene extends Phaser.Scene {
       if (!world.isPaused) world.pause();
       this.anims.pauseAll();
       hudFrame({ area: this.areaName, cooldowns: [0, 0, 0, 0], prompt: null, boss: null });
+      if (!this.transitioning) this.autoPlay(time);
       return;
     }
     if (world.isPaused) {
@@ -477,17 +483,26 @@ export class WorldScene extends Phaser.Scene {
     p.setDepth(this.feetY);
     this.shadow.setPosition(this.feetX, this.feetY + 1).setDepth(this.feetY - 1);
     this.heroRing.setPosition(this.feetX, this.feetY + 1).setDepth(this.feetY - 1.5);
-    const f = this.facing;
-    const side = Math.abs(f.x) > Math.abs(f.y);
-    const right = side ? f.x > 0 : true;
-    const back = !side && f.y < 0;
-    const hx = p.x + (side ? (right ? 5 : -5) : back ? -7 : 7);
-    const hy = p.y + 3;
-    const swinging = time < this.swingUntil;
-    const base = right ? -20 : 20;
-    const swing = swinging ? (1 - (this.swingUntil - time) / 160) * 110 : 0;
-    this.wrench.setPosition(hx, hy).setFlipX(!right).setAngle(right ? base + swing : base - swing);
-    this.wrench.setDepth(back ? this.feetY - 0.5 : this.feetY + 0.5);
+    this.animateHero(time);
+  }
+
+  /** One-shot body animation (attack, cast, hurt) that wins over walk/idle until it ends. */
+  private playAction(key: string, ms: number): void {
+    this.action = { key, until: this.time.now + ms };
+    this.player.play(key, true);
+  }
+
+  private animateHero(time: number): void {
+    const p = this.player;
+    const body = p.body as Phaser.Physics.Arcade.Body;
+    const moving = body.velocity.lengthSq() > 25;
+    if (Math.abs(this.facing.x) > 0.2) p.setFlipX(this.facing.x < 0);
+    let key = moving ? 'hero-walk' : 'hero-idle';
+    if (this.searching) key = 'hero-collect';
+    if (this.action && time < this.action.until) key = this.action.key;
+    else this.action = null;
+    if (time < this.dashUntil) key = 'hero-dash';
+    if (p.anims.currentAnim?.key !== key || !p.anims.isPlaying && key !== this.action?.key) p.play(key, true);
   }
 
   // ---------------- mouse control ----------------
@@ -656,16 +671,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.pull) v.add(this.pull);
     if (time < this.knock.until) v.set(this.knock.x, this.knock.y);
     body.setVelocity(v.x, v.y);
-    if (dir.lengthSq() > 0) {
-      this.facing.copy(dir).normalize();
-      const anim = Math.abs(dir.x) > Math.abs(dir.y) ? 'hero-side' : dir.y < 0 ? 'hero-up' : 'hero-down';
-      this.player.setFlipX(anim === 'hero-side' && dir.x < 0);
-      this.player.play(anim, true);
-    } else {
-      this.player.stop();
-      const f = this.facing;
-      this.player.setFrame(Math.abs(f.x) > Math.abs(f.y) ? 4 : f.y < 0 ? 2 : 0);
-    }
+    if (dir.lengthSq() > 0) this.facing.copy(dir).normalize();
     if (this.pull) this.player.setTint(0x9fe8ee);
     else if (time > this.invulnUntil) this.player.clearTint();
   }
@@ -681,6 +687,15 @@ export class WorldScene extends Phaser.Scene {
   /** Picks the next job when auto mode is on: fight nearby enemies, otherwise salvage the closest ready junk. */
   private autoPlay(time: number): void {
     if (!session.autoMode || this.transitioning || time - this.lastManual < 3000) return;
+    // story/loot modals would stall idle play: confirm them after 4 s on the player's behalf
+    const modalEl = document.getElementById('modal');
+    if (modalEl && !modalEl.hidden) {
+      if (!this.modalSince) this.modalSince = time;
+      if (time - this.modalSince > 4000) (modalEl.querySelector('button.primary') as HTMLButtonElement | null)?.click();
+      return;
+    }
+    this.modalSince = 0;
+    if (panelOpen()) return;
     const fx = this.feetX, fy = this.feetY;
     const dist = (x: number, y: number) => Phaser.Math.Distance.Between(fx, fy, x, y);
     const near = (r: number) => this.enemies.filter((e) => e.alive && dist(e.x, e.y) < r);
@@ -697,6 +712,7 @@ export class WorldScene extends Phaser.Scene {
 
     if (time < this.autoNext || this.searching) return;
     this.autoNext = time + 400;
+    if (this.autoUnstick(time)) return;
     const lowHp = session.hp < session.maxHp * 0.35;
 
     if (this.order?.kind === 'enemy') {
@@ -730,6 +746,7 @@ export class WorldScene extends Phaser.Scene {
       const d = dist(it.x, it.y);
       if (d < bestD) (best = it), (bestD = d);
     }
+    if (!best && this.mapId === 'patio') best = this.interactables.find((it) => it.goto === 'yard') ?? null;
     if (!best) return;
     const path = this.pathTo(best.x, best.y);
     if (!path.length) {
@@ -738,6 +755,25 @@ export class WorldScene extends Phaser.Scene {
     }
     this.autoTarget = best;
     this.order = { kind: 'use', it: best, path };
+  }
+
+  /** Drops an order that has not moved the hero for 1.5 s and benches its target. */
+  private autoUnstick(time: number): boolean {
+    const st = this.autoStuck;
+    const moved = Phaser.Math.Distance.Between(st.x, st.y, this.feetX, this.feetY) > 3;
+    if (moved || !this.order || this.order.kind === 'enemy') {
+      st.x = this.feetX;
+      st.y = this.feetY;
+      st.since = time;
+      return false;
+    }
+    if (time - st.since < 1500) return false;
+    if (this.autoTarget) this.autoSkip.set(this.autoTarget, time + 20_000);
+    this.autoTarget = null;
+    this.order = null;
+    st.since = time;
+    session.autoLog.unstuck++;
+    return true;
   }
 
   /** Auto survival: dodge telegraphed blows, and kite away while hurt. Returns true when it took over this frame. */
@@ -754,7 +790,10 @@ export class WorldScene extends Phaser.Scene {
       (e) => e.alive && e.windingUp && Phaser.Math.Distance.Between(fx, fy, e.x, e.y) <= e.radius + 8,
     );
     if (blows.length) {
-      if (time >= this.ready.dash) this.dash(away(blows, 60));
+      if (time >= this.ready.dash) {
+        session.autoLog.dodges++;
+        this.dash(away(blows, 60));
+      }
       else if (time < this.evadeUntil) return true;
       else {
         this.evadeUntil = time + 350;
@@ -768,6 +807,7 @@ export class WorldScene extends Phaser.Scene {
     if (time >= this.ready.pulse && near(pulseRadius(session.state) * 0.8).length) this.pulse();
     if (time < this.evadeUntil) return true;
     this.evadeUntil = time + 500;
+    session.autoLog.retreats++;
     this.moveTo(away(threats, 80), false);
     return true;
   }
@@ -781,10 +821,10 @@ export class WorldScene extends Phaser.Scene {
     };
     if (k.UP.isDown || k.DOWN.isDown || k.LEFT.isDown || k.RIGHT.isDown) this.lastManual = time;
     if (down(k.SPACE)) this.attack(time);
-    if (down(k.Q) || down(k.ONE)) this.pulse();
-    if (down(k.W) || down(k.TWO)) this.arc();
-    if (down(k.E) || down(k.THREE)) this.dash();
-    if (down(k.R) || down(k.FOUR)) this.overdrive();
+    if (down(k.Q)) this.pulse();
+    if (down(k.W)) this.arc();
+    if (down(k.E)) this.dash();
+    if (down(k.R)) this.overdrive();
     if (down(k.F)) this.nearestInteractable()?.act();
   }
 
@@ -821,11 +861,13 @@ export class WorldScene extends Phaser.Scene {
     const away = new Phaser.Math.Vector2(this.player.x - fx, this.player.y - fy).normalize().scale(150);
     this.knock = { x: away.x, y: away.y, until: now + 120 };
     this.player.setTint(0xff6a5a);
+    this.playAction('hero-hurt', 220);
     this.cameras.main.shake(90, 0.003);
     if (session.hp <= 0) this.die();
   }
 
   private die(): void {
+    session.autoLog.deaths++;
     this.transitioning = true;
     this.pull = null;
     toast('Seu traje travou. Um guindaste-reboque arrastou você de volta ao Pátio Zero.', 'warn');
@@ -888,20 +930,25 @@ export class WorldScene extends Phaser.Scene {
   private attack(time: number): void {
     if (time < this.ready.attack || time < this.dashUntil) return;
     this.ready.attack = time + COOLDOWN.attack;
-    this.swingUntil = time + 160;
     const cx = this.feetX, cy = this.feetY - 5;
     const hx = cx + this.facing.x * 12;
     const hy = cy + this.facing.y * 12;
-    vfx.slash(this, { x: cx, y: cy }, Math.atan2(this.facing.y, this.facing.x));
-    const dmg = Math.max(1, playerStats(session.state).combate);
-    for (const t of this.hitTargets()) if (Phaser.Math.Distance.Between(hx, hy, t.x, t.y) < 12 + t.radius) t.hit(dmg);
+    this.playAction('hero-attack', 150);
+    // damage and slash land on the impact frame (frame 7 starts 50ms into the 20fps swing)
+    this.time.delayedCall(50, () => {
+      vfx.slash(this, { x: cx, y: cy }, Math.atan2(this.facing.y, this.facing.x));
+      const dmg = Math.max(1, playerStats(session.state).combate);
+      for (const t of this.hitTargets()) if (Phaser.Math.Distance.Between(hx, hy, t.x, t.y) < 12 + t.radius) t.hit(dmg);
+    });
   }
 
   pulse(): void {
     const time = this.time.now;
     if (time < this.ready.pulse || panelOpen()) return;
     this.ready.pulse = time + COOLDOWN.pulse;
+    if (session.autoMode) session.autoLog.skills.pulse++;
     const r = pulseRadius(session.state);
+    this.playAction('hero-cast', 200);
     vfx.castPose(this, this.player);
     vfx.pulse(this, { x: this.feetX, y: this.feetY - 6 }, r);
     for (const e of this.enemies) {
@@ -938,6 +985,8 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
     this.ready.arc = time + COOLDOWN.arc;
+    if (session.autoMode) session.autoLog.skills.arc++;
+    this.playAction('hero-cast', 200);
     vfx.castPose(this, this.player);
     vfx.arc(this, [{ x: this.player.x + this.facing.x * 6, y: this.player.y + 2 }, ...chain.map((t) => ({ x: t.x, y: t.y }))]);
     for (const t of chain) t.hit(14);
@@ -954,6 +1003,7 @@ export class WorldScene extends Phaser.Scene {
     }
     if (session.state.equipped.module === 'mod_magnet') {
       this.ready.overdrive = time + COOLDOWN.overdrive;
+      if (session.autoMode) session.autoLog.skills.overdrive++;
       vfx.overdrive(this, d, [], 110);
       for (const e of this.enemies) {
         if (!e.alive || Phaser.Math.Distance.Between(d.x, d.y, e.x, e.y) > 110) continue;
@@ -970,6 +1020,7 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
     this.ready.overdrive = time + COOLDOWN.overdrive;
+    if (session.autoMode) session.autoLog.skills.overdrive++;
     vfx.overdrive(this, d, targets, 0);
     for (const t of targets) t.hit(12);
   }
@@ -979,6 +1030,7 @@ export class WorldScene extends Phaser.Scene {
     const time = this.time.now;
     if (time < this.ready.dash || panelOpen()) return;
     this.ready.dash = time + COOLDOWN.dash;
+    if (session.autoMode) session.autoLog.skills.dash++;
     const k = this.keys;
     const dir = new Phaser.Math.Vector2(
       (k.RIGHT.isDown ? 1 : 0) - (k.LEFT.isDown ? 1 : 0),
@@ -1288,7 +1340,8 @@ export class WorldScene extends Phaser.Scene {
       this.facing.set(s.at.x - this.feetX, s.at.y - this.feetY + 8).normalize();
       if (time >= (s.nextHit ?? 0)) {
         s.nextHit = time + 240;
-        this.swingUntil = time + 160;
+        // the strike frame lands with the salvage spark
+        if (this.player.anims.currentAnim?.key === 'hero-collect') this.player.anims.restart();
         vfx.salvageHit(this, s.at);
         if (s.sprite?.active) this.tweens.add({ targets: s.sprite, x: s.sprite.x + 1, duration: 40, yoyo: true, repeat: 1 });
       }
