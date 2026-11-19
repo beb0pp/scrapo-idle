@@ -9,10 +9,11 @@ import { VENDOR_NAME, VENDOR_OFFERS } from '../data/vendor';
 import { session } from '../session';
 import { heroPortraitUrl } from '../art/sprites';
 import { $, esc, icon } from './shared';
+import { ferroPanelView, handleFerroAction } from './ferroPanel';
 import { applyDock, cycleDock, dockMode, DOCK_LABEL, enableDockDrag } from './dock';
 import './mochila.css';
 
-export type PanelKind = 'inventory' | 'workshop' | 'vendor' | 'terminal' | 'settings';
+export type PanelKind = 'inventory' | 'workshop' | 'vendor' | 'terminal' | 'settings' | 'ferro';
 let openKind: PanelKind | null = null;
 let selected: ItemId | null = null;
 let filter = 'Todos';
@@ -54,7 +55,10 @@ export function initPanels(): void {
 function handlePanelClick(event: MouseEvent): void {
   const button = (event.target as HTMLElement).closest('button');
   if (!button?.dataset.act) return;
-  const [action, value] = button.dataset.act.split(':');
+  const act = button.dataset.act;
+  const at = act.indexOf(':');
+  if (act.startsWith('f-') && handleFerroAction(at < 0 ? act : act.slice(0, at), at < 0 ? '' : act.slice(at + 1))) { renderPanel(); return; }
+  const [action, value] = act.split(':');
   if (action === 'close') closePanel();
   if (action === 'dock') { cycleDock(); renderPanel(); applyDock($('panel'), true); }
   if (action === 'select') { selected = value as ItemId; renderPanel(); }
@@ -73,8 +77,8 @@ function handlePanelClick(event: MouseEvent): void {
 
 function renderPanel(): void {
   if (!openKind) return;
-  const views: Record<PanelKind, (state: GameState) => string> = { inventory, workshop, vendor, terminal, settings };
-  const titles: Record<PanelKind, string> = { inventory: 'Mochila', workshop: 'Oficina', vendor: `Mercado — ${VENDOR_NAME}`, terminal: 'Terminal de Extração', settings: 'Configurações' };
+  const views: Record<PanelKind, (state: GameState) => string> = { inventory, workshop, vendor, terminal, settings, ferro: ferroPanelView };
+  const titles: Record<PanelKind, string> = { inventory: 'Mochila', workshop: 'Oficina', vendor: `Mercado — ${VENDOR_NAME}`, terminal: 'Terminal de Extração', settings: 'Configurações', ferro: 'Ferromancia' };
   const dock = openKind === 'inventory'
     ? `<button data-act="dock" class="dock-btn" title="Mudar posição da janela (ou arraste pelo título)">⇆ ${DOCK_LABEL[dockMode()]}</button>`
     : '';
