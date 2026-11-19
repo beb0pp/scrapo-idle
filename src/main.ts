@@ -5,8 +5,10 @@ import { BootScene } from './scenes/BootScene';
 import { ExtractionScene } from './scenes/ExtractionScene';
 import { TitleScene } from './scenes/TitleScene';
 import { WorldScene } from './scenes/WorldScene';
+import { grantXp, levelOf } from './core/level';
+import { MANA_LEVEL_CAP, MANA_PER_LEVEL } from './core/mana';
 import { session } from './session';
-import { closePanel, onAfkStart, panelOpen, togglePanel } from './ui/ui';
+import { closePanel, onAfkStart, panelOpen, toast, togglePanel } from './ui/ui';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -21,6 +23,8 @@ const game = new Phaser.Game({
   disableContextMenu: true,
   scene: [BootScene, TitleScene, WorldScene, ExtractionScene],
 });
+
+session.onLevelUp((level) => toast(level <= MANA_LEVEL_CAP ? `Nível ${level}! +${MANA_PER_LEVEL} de mana máxima.` : `Nível ${level}!`, 'loot'));
 
 onAfkStart((areaId) => {
   if (session.startAfk(areaId)) return;
@@ -51,6 +55,12 @@ if (import.meta.env.DEV) {
       },
       world: () => game.scene.getScene('World'),
       ferro: () => (game.scene.getScene('World') as unknown as { ferro: unknown }).ferro,
+      level: () => levelOf(session.state),
+      grantXp: (amount: number) => {
+        let gained = 0;
+        session.mutate((s) => { gained = grantXp(s, amount); });
+        return gained;
+      },
     },
   });
 }

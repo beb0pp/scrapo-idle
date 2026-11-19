@@ -1,6 +1,8 @@
 import { AFK_AREAS, type AfkAreaId } from '../data/areas';
 import type { ItemBag } from '../data/items';
+import { XP } from '../data/xp';
 import { afkRareFactor, droneCapacity, droneReady, playerStats } from './derived';
+import { grantXp } from './level';
 import { mixSeed, mulberry32, rollEntry, rollQty } from './rng';
 import { addItems, type AfkEndReason, type AfkSession, type GameState } from './state';
 
@@ -103,9 +105,10 @@ export function claimAfk(state: GameState, now: number): ItemBag | null {
   endAfk(state, now, 'stopped');
   state.afk = null;
   if (state.claimedSessions.includes(s.id)) return null;
-  const { loot } = computeProgress(s, now);
+  const { loot, cycles } = computeProgress(s, now);
   addItems(state, loot);
   state.claimedSessions = [...state.claimedSessions, s.id].slice(-CLAIM_HISTORY);
   state.stats.extractions++;
+  grantXp(state, XP.afkCycle * cycles);
   return loot;
 }

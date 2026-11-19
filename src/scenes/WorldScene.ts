@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { arcJumps, droneReady, playerStats, pulseRadius } from '../core/derived';
+import { grantXp } from '../core/level';
 import { rollTable } from '../core/rng';
 import { addItems } from '../core/state';
 import { DECALS, TILES } from '../art/tileArt';
@@ -8,7 +9,8 @@ import { ITEMS, RARITY, rarityOf, type ItemBag, type ItemId } from '../data/item
 import { attachDogParts, dogPartsFor } from '../art/dogParts';
 import { attachDroneParts, dronePartsFor } from '../art/droneParts';
 import { GEAR_LAYERS, gearTexture, hasGearArt } from '../art/heroGear';
-import { Crane, Enemy, type EnemyKind, type Target } from '../game/enemies';
+import { XP } from '../data/xp';
+import { Crane, Enemy, killXp, type EnemyKind, type Target } from '../game/enemies';
 import { findPath, nearestFree, simplify } from '../game/pathfind';
 import * as vfx from '../game/vfx';
 import { RoboDog } from '../game/dog';
@@ -972,7 +974,10 @@ export class WorldScene extends Phaser.Scene {
     if (!e.alive) return;
     vfx.damageNumber(this, { x: e.x, y: e.y - 6 }, n, n >= 14);
     if (e.damage(n, this.player.x, this.player.y)) {
-      session.state.stats.kills++;
+      session.mutate((s) => {
+        s.stats.kills++;
+        grantXp(s, killXp(e.kind));
+      });
       this.dropLoot(e.x, e.y, rollTable(Math.random, PILE_TABLES.enemy_drop.loot, 1));
     }
   }
@@ -982,6 +987,7 @@ export class WorldScene extends Phaser.Scene {
     if (c.alive) vfx.damageNumber(this, { x: c.sprite.x, y: c.sprite.y - 22 }, n, n >= 14);
     if (!c.damage(n)) return;
     this.pull = null;
+    session.mutate((s) => { grantXp(s, XP.crane); });
     const first = !session.state.flags.boss_defeated;
     this.relicDrop = { ...(first || Math.random() < 0.35 ? { relic_crane_coil: 1 } : { servo: 1, cable: 2, gear: 2 }), ...(first ? { ether_crystal: 1 } : {}) };
     this.relic = this.add.sprite(c.sprite.x, c.sprite.y + 28, 'relic', 0).play('relic-pulse').setDepth(c.sprite.y + 30);
@@ -1452,6 +1458,7 @@ export class WorldScene extends Phaser.Scene {
     session.mutate((s) => {
       addItems(s, bag);
       s.stats.searches++;
+      grantXp(s, XP.search);
       if (firstWagon) s.flags.first_wagon_looted = true;
     });
     this.refreshPile(pile);

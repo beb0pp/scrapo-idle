@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { XP } from '../data/xp';
 
 export type EnemyKind = 'sorter' | 'press' | 'sparkbot' | 'magnetron' | 'scrapgolem';
 
@@ -34,6 +35,8 @@ const CFG: Record<EnemyKind, Cfg> = {
   magnetron: { hp: 48, patrol: 20, chase: 34, aggro: 150, reach: 76, windup: 700, recover: 900, dmg: 14, radius: 150, light: false, tex: 'magnetron', anim: 'magnetron-walk', size: 24, ranged: true },
   scrapgolem: { hp: 130, patrol: 12, chase: 27, aggro: 100, reach: 30, windup: 1100, recover: 1050, dmg: 28, radius: 42, light: false, tex: 'scrapgolem', anim: 'scrapgolem-walk', size: 32, slam: true },
 };
+
+export const killXp = (kind: EnemyKind): number => Math.round(CFG[kind].hp / XP.hpPerKillXp);
 
 const LEASH = 240;
 const TELEGRAPH = 0xe8433a;

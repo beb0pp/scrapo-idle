@@ -1,5 +1,6 @@
 import { claimAfk, endAfk, finalizeAfterReload, settleFull, startAfk } from './core/afk';
 import { playerStats } from './core/derived';
+import { levelOf } from './core/level';
 import { loadState, saveState, SAVE_KEY, type KeyValueStore } from './core/save';
 import { newGame, type AfkEndReason, type GameState } from './core/state';
 import type { Result } from './core/economy';
@@ -44,9 +45,13 @@ export class Session {
   private lastBeat = 0;
   readonly recentFinds: Array<{ bag: ItemBag; source: string; at: number }> = [];
 
+  private readonly levelListeners = new Set<(level: number) => void>();
+  private level: number;
+
   constructor(store: KeyValueStore) {
     this.store = store;
     this.state = loadState(store, Date.now());
+    this.level = levelOf(this.state).level;
     finalizeAfterReload(this.state, Date.now());
     this.save();
   }
@@ -54,6 +59,12 @@ export class Session {
   onChange(fn: Listener): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  /** Fires once per commit that raised the hero level, with the new level. */
+  onLevelUp(fn: (level: number) => void): () => void {
+    this.levelListeners.add(fn);
+    return () => this.levelListeners.delete(fn);
   }
 
   onToast(fn: ToastListener): void {
@@ -72,6 +83,10 @@ export class Session {
   commit(): void {
     this.save();
     this.listeners.forEach((fn) => fn());
+    const level = levelOf(this.state).level;
+    const raised = level > this.level;
+    this.level = level;
+    if (raised) this.levelListeners.forEach((fn) => fn(level));
   }
 
   /** Runs a rule from core/, then saves, broadcasts and reports the outcome. */

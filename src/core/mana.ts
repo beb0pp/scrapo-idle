@@ -1,40 +1,24 @@
 import { ITEMS } from '../data/items';
 import { playerStats } from './derived';
+import { levelOf } from './level';
 import type { Result } from './economy';
 import type { ManaHolder } from './spells';
 import { countOf, removeItems, type GameState } from './state';
 
 export const BASE_MANA = 30;
 export const MANA_PER_LEVEL = 5;
-export const MAX_LEVEL = 30;
+/** Levels past this only open hunt regions; mana keeps the old Nv 30 ceiling. */
+export const MANA_LEVEL_CAP = 30;
 export const CRYSTAL_BONUS = 5;
 export const FLASK_RESTORE = 30;
 export const OUT_OF_COMBAT_MS = 4000;
 
 export type { ManaHolder };
-export interface LevelInfo { level: number; xp: number; into: number; need: number }
-
-/** XP is derived from saved stats, so old saves get their level without migration. */
-export function xpOf(state: GameState): number {
-  const { kills, searches, extractions } = state.stats;
-  return kills * 10 + searches * 4 + extractions * 25 + state.ferro.built.length * 15 + state.ferro.learned.length * 10;
-}
-
-export function xpForLevel(level: number): number {
-  return (60 * level * (level - 1)) / 2;
-}
-
-export function levelOf(state: GameState): LevelInfo {
-  const xp = xpOf(state);
-  let level = 1;
-  while (level < MAX_LEVEL && xp >= xpForLevel(level + 1)) level++;
-  const floor = xpForLevel(level);
-  const need = level >= MAX_LEVEL ? 0 : xpForLevel(level + 1) - floor;
-  return { level, xp, into: xp - floor, need };
-}
+// ui/panels.ts imports levelOf from here; kept so that file needs no edit.
+export { levelOf } from './level';
 
 export function maxMana(state: GameState): number {
-  return BASE_MANA + MANA_PER_LEVEL * (levelOf(state).level - 1) + playerStats(state).mana + state.ferro.manaBonus;
+  return BASE_MANA + MANA_PER_LEVEL * (Math.min(levelOf(state).level, MANA_LEVEL_CAP) - 1) + playerStats(state).mana + state.ferro.manaBonus;
 }
 
 export function manaRegen(outOfCombat: boolean): number {

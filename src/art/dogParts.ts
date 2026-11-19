@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { levelOf } from '../core/mana';
+import { levelOf } from '../core/level';
 import { slotOf } from '../core/spells';
 import type { GameState } from '../core/state';
 

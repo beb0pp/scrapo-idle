@@ -57,6 +57,8 @@ export interface GameState {
   /** Last time the open tab proved it was alive; caps AFK sessions after a tab close. */
   lastHeartbeat: number;
   stats: { searches: number; kills: number; extractions: number };
+  /** Hero experience; the level derives from it (core/level.ts). */
+  xp: number;
   ferro: FerroState;
 }
 
@@ -71,6 +73,7 @@ export function newGame(now: number): GameState {
     claimedSessions: [],
     lastHeartbeat: now,
     stats: { searches: 0, kills: 0, extractions: 0 },
+    xp: 0,
     ferro: newFerro(),
   };
 }

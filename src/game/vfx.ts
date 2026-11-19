@@ -224,6 +224,20 @@ function floatingText(scene: Phaser.Scene, at: Pt, text: string, color: string, 
   scene.tweens.add({ targets: t, y: at.y - rise, alpha: 0, delay: 450, duration: 550, ease: 'Quad.easeIn', onComplete: () => t.destroy() });
 }
 
+/** Level up: a golden flash and ring at the hero's feet, sparks rising around him. */
+export function levelUpBurst(scene: Phaser.Scene, hero: Pt): void {
+  const feet = { x: hero.x, y: hero.y + 6 };
+  flash(scene, { x: hero.x, y: hero.y - 4 }, 1.1, AMBER, 420, 0.85);
+  ring(scene, feet, 4, 26, AMBER, 2, 420);
+  ring(scene, feet, 2, 16, PALE, 1, 320);
+  sparks(scene, hero, 14, AMBER, 46, 420);
+  for (let i = 0; i < 10; i++) {
+    const x = hero.x + Phaser.Math.Between(-9, 9);
+    const mote = scene.add.rectangle(x, feet.y, 1, Phaser.Math.Between(2, 4), i % 3 ? AMBER : PALE).setBlendMode(Phaser.BlendModes.ADD).setDepth(FX + 1);
+    vanish(scene, mote, Phaser.Math.Between(420, 620), { y: feet.y - Phaser.Math.Between(18, 30), delay: i * 30, ease: 'Quad.easeOut' });
+  }
+}
+
 /** Text flourish when something is interrupted or broken (e.g. the crane's magnet line). */
 export function callout(scene: Phaser.Scene, at: Pt, text: string): void {
   floatingText(scene, at, text, '#fffbe0', 8, 14);
