@@ -237,3 +237,16 @@ body:has(#spellbar) #prompt { bottom: 156px; }
 .spell-slot b { font-size: 13px; }
 .spell-slot span { font-size: 11px; letter-spacing: 0.2px; text-shadow: 1px 0 0 #0c0a12, -1px 0 0 #0c0a12, 0 1px 0 #0c0a12; }
 .spell-slot { width: 74px; }
+
+/* spell icons: luminous art in a dark tile with a 1-px frame and glow in the school hue */
+.sp-spell_ember, .fe-spell[data-spell='spell_ember'], .spell-slot[data-spell-id='spell_ember'] { --sh: #ffb470; --sg: rgba(240, 138, 58, 0.45); }
+.sp-spell_ward, .fe-spell[data-spell='spell_ward'], .spell-slot[data-spell-id='spell_ward'] { --sh: #9ee8ee; --sg: rgba(95, 208, 216, 0.45); }
+.sp-spell_lodestone, .fe-spell[data-spell='spell_lodestone'], .spell-slot[data-spell-id='spell_lodestone'] { --sh: #d4b8ff; --sg: rgba(180, 138, 230, 0.45); }
+.sp-spell_haste, .fe-spell[data-spell='spell_haste'], .spell-slot[data-spell-id='spell_haste'] { --sh: #ffe27a; --sg: rgba(224, 179, 58, 0.45); }
+.sp-spell_net, .fe-spell[data-spell='spell_net'], .spell-slot[data-spell-id='spell_net'] { --sh: #f0a8f0; --sg: rgba(216, 120, 224, 0.45); }
+.sp-spell_harvest, .fe-spell[data-spell='spell_harvest'], .spell-slot[data-spell-id='spell_harvest'] { --sh: #c4f08e; --sg: rgba(159, 216, 106, 0.45); }
+img.fe-spell-ico, img.fe-bico, img.spell-ico { background: #0b0910; border: 1px solid var(--sh, #d8c8ff); image-rendering: pixelated; }
+img.fe-spell-ico { padding: 7px; box-shadow: inset 0 0 10px var(--sg), 0 0 0 1px #0b0910, 0 0 8px var(--sg); }
+img.fe-bico { width: 56px; height: 56px; padding: 3px; box-shadow: inset 0 0 6px var(--sg), 0 0 0 1px #0b0910, 0 0 8px var(--sg); }
+.spell-slot img.spell-ico { width: 34px; height: 34px; margin-top: 6px; box-shadow: 0 0 0 1px #0b0910, 0 0 6px var(--sg); }
+.spell-slot[data-spell-id] { border-color: var(--sh); box-shadow: inset 0 0 10px var(--sg); }

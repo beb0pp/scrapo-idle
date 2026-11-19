@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { iconUrls } from './sprites';
+import { buildRuneArt } from './runeArt';
 import { SKILL_NODES, type NodeId, type SpellId } from '../data/ferromancy';
 
 // Original Ferromancia pixel art, painted by code in the game's 16-bit palette (see docs/CREDITOS.md).
@@ -100,32 +101,124 @@ const ICONS: Record<'ether_shard' | 'reagent_ember' | 'reagent_ward' | 'reagent_
 };
 
 // ---------------- spell icons (16×16) ----------------
+// Luminous style: dark tile, a soft glow pooled behind the art, a bright silhouette in one hue family.
 
-function spellEmber(c: Ctx): void {
-  r(c, '#2a1520', 0, 0, 16, 16);
-  for (let i = 0; i < 10; i++) r(c, i < 2 ? EMBER_HI : i < 6 ? EMBER : EMBER_DK, 3 + i, 12 - i, 2, 2);
-  r(c, K, 12, 1, 3, 3); r(c, EMBER_HI, 12, 2, 2, 1); r(c, WHITE, 13, 1, 1, 1);
-  px(c, EMBER_HI, [[2, 8], [5, 14], [9, 13], [1, 11]]);
+interface IconPal { bg: [string, string, string]; ink: string; mid: string; hi: string; white: string }
+/** 0 empty, 2 mid, 3 highlight, 4 white. */
+type Shape = (x: number, y: number) => number;
+
+const ICON_PAL: Record<SpellId, IconPal> = {
+  spell_ember: { bg: ['#140c12', '#33161a', '#5c2418'], ink: '#a8341e', mid: EMBER, hi: EMBER_HI, white: '#fff6e0' },
+  spell_ward: { bg: ['#0a1218', '#123038', '#1c5058'], ink: '#2b7f88', mid: CYAN, hi: CYAN_HI, white: WHITE },
+  spell_lodestone: { bg: ['#0f0a1a', '#24163e', '#3a2466'], ink: ETHER_DK, mid: ETHER, hi: ETHER_HI, white: WHITE },
+  spell_haste: { bg: ['#141008', '#2e2410', '#4e3c14'], ink: '#a07a1a', mid: '#e0b33a', hi: '#fff2b0', white: WHITE },
+  spell_net: { bg: ['#140a18', '#301634', '#4e2252'], ink: '#8a3a90', mid: '#d878e0', hi: '#f8c8f4', white: WHITE },
+  spell_harvest: { bg: ['#0a1408', '#183012', '#24501a'], ink: '#4a8a2a', mid: '#9fd86a', hi: '#e8ffc8', white: WHITE },
+};
+
+function luminous(c: Ctx, pal: IconPal, glow: [number, number, number], shape: Shape, outline = true, sparks: [number, number, number][] = []): void {
+  const [gx, gy, gr] = glow;
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const d = Math.hypot(x + 0.5 - gx, y + 0.5 - gy) / gr;
+    let band = d < 0.45 ? 2 : d < 0.85 ? 1 : 0;
+    if (band < 2 && d < (band ? 0.53 : 0.93) && (x + y) % 2 === 0) band++;
+    r(c, pal.bg[band], x, y, 1, 1);
+  }
+  const levels = [pal.bg[0], pal.ink, pal.mid, pal.hi, pal.white];
+  const at = (x: number, y: number) => (x < 0 || y < 0 || x > 15 || y > 15 ? 0 : shape(x, y));
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const k = at(x, y);
+    if (k) r(c, levels[k], x, y, 1, 1);
+    else if (outline && (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1))) r(c, pal.ink, x, y, 1, 1);
+  }
+  for (const [x, y, k] of sparks) r(c, levels[k], x, y, 1, 1);
 }
 
-function spellWard(c: Ctx): void {
-  r(c, '#14242c', 0, 0, 16, 16);
-  r(c, K, 3, 2, 10, 11); r(c, K, 5, 13, 6, 2);
-  r(c, STEEL, 4, 3, 8, 9); r(c, STEEL, 6, 12, 4, 2);
-  r(c, STEEL_HI, 4, 3, 8, 2);
-  r(c, CYAN, 7, 5, 2, 6); r(c, CYAN, 5, 7, 6, 2);
-  r(c, CYAN_HI, 7, 7, 2, 2);
-  px(c, CYAN, [[1, 1], [14, 1], [1, 14], [14, 14]]);
+/** Ember lance: a comet streaking up-right, white-hot at the head. */
+const emberShape: Shape = (x, y) => {
+  const tx = 2.5, ty = 13.5, hx = 11.5, hy = 4.5;
+  const vx = hx - tx, vy = hy - ty;
+  const t = Math.max(0, Math.min(1, ((x + 0.5 - tx) * vx + (y + 0.5 - ty) * vy) / (vx * vx + vy * vy)));
+  const dist = Math.hypot(x + 0.5 - (tx + vx * t), y + 0.5 - (ty + vy * t));
+  const rad = 0.55 + t * 2.3;
+  if (dist > rad) return 0;
+  return dist < rad * 0.45 && t > 0.5 ? 4 : dist < rad * 0.75 && t > 0.25 ? 3 : 2;
+};
+
+/** Ward: a shield with a bright rim and a white rune cross. */
+const wardShape: Shape = (x, y) => {
+  if (y < 2 || y > 14) return 0;
+  const dx = Math.abs(x - 7.5);
+  const hw = y <= 8 ? 5.5 : 5.5 - (y - 8) * 0.9;
+  if (dx > hw) return 0;
+  if ((dx < 1 && y >= 4 && y <= 11) || (y === 6 && dx < 3.6)) return 4;
+  return dx > hw - 1 || y === 2 ? 3 : 2;
+};
+
+/** Lodestone: a horseshoe magnet with white-hot poles. */
+const lodeShape: Shape = (x, y) => {
+  const dx = Math.abs(x - 7.5);
+  const d = Math.hypot(x - 7.5, y - 7);
+  const arc = y <= 7 && d >= 2 && d <= 5.2;
+  const leg = y > 7 && y <= 13 && dx >= 2 && dx <= 5;
+  if (!arc && !leg) return 0;
+  if (leg && y >= 12) return 4;
+  if (leg && y === 11) return 3;
+  return arc && d > 4 && y < 6 ? 3 : 2;
+};
+
+const BOLT: [number, number][] = [[9, 0.5], [3.5, 8.5], [7, 8.5], [5, 15.5], [12.5, 6], [8.8, 6], [11.5, 0.5]];
+
+function inPoly(px: number, py: number, pts: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
 }
 
-function spellLode(c: Ctx): void {
-  r(c, '#1f1530', 0, 0, 16, 16);
-  r(c, K, 3, 3, 10, 9); r(c, RUST, 4, 4, 3, 7); r(c, RUST, 9, 4, 3, 7); r(c, RUST, 4, 9, 8, 2);
-  r(c, '#3a1f30', 7, 4, 2, 5);
-  r(c, STEEL_HI, 4, 4, 3, 2); r(c, STEEL_HI, 9, 4, 3, 2);
-  px(c, ETHER, [[2, 1], [5, 1], [10, 1], [13, 1], [1, 13], [14, 13], [7, 14], [8, 13]]);
-  px(c, ETHER_HI, [[3, 0], [12, 0], [7, 13]]);
-}
+/** Haste: a lightning bolt, white at its thick core. */
+const hasteShape: Shape = (x, y) => {
+  const at = (u: number, v: number) => inPoly(u + 0.5, v + 0.5, BOLT);
+  if (!at(x, y)) return 0;
+  return at(x - 1, y) && at(x + 1, y) && at(x, y - 1) && at(x, y + 1) ? 4 : 3;
+};
+
+/** Net: a round diagonal mesh with glowing knots. */
+const netShape: Shape = (x, y) => {
+  const d = Math.hypot(x - 7.5, y - 7.5);
+  if (d > 6.9) return 0;
+  if (d > 5.9) return 3;
+  const a = (x + y) % 4 === 0, b = (x - y + 16) % 4 === 0;
+  if (a && b) return d < 3 ? 4 : 3;
+  return a || b ? 2 : 0;
+};
+
+/** Harvest: a spiky green burst springing from a scrap pile. */
+const harvestShape: Shape = (x, y) => {
+  const px0 = x + 0.5 - 8, py0 = y + 0.5 - 6.5;
+  const d = Math.hypot(px0, py0);
+  const a = Math.atan2(py0, px0);
+  const k = Math.round(a / (Math.PI / 4));
+  const off = Math.abs(a - k * (Math.PI / 4)) * d;
+  const len = k % 2 ? 4.6 : 6.2;
+  if (d < 2.3) return 4;
+  if (d <= len && off < 0.75 && y < 12) return d > len - 1.6 ? 2 : 3;
+  const e = ((x + 0.5 - 8) / 6) ** 2 + ((y + 0.5 - 15.5) / 3.2) ** 2;
+  if (y >= 12 && e <= 1) return y === 12 ? 3 : 2;
+  return 0;
+};
+
+const SPELL_ICONS: Record<SpellId, (c: Ctx) => void> = {
+  spell_ember: (c) => luminous(c, ICON_PAL.spell_ember, [10.5, 5.5, 8], emberShape, true, [[14, 1, 3], [13, 8, 2], [8, 2, 2], [1, 15, 2]]),
+  spell_ward: (c) => luminous(c, ICON_PAL.spell_ward, [8, 8, 8.5], wardShape, true, [[1, 1, 3], [14, 2, 2], [14, 13, 3]]),
+  spell_lodestone: (c) => luminous(c, ICON_PAL.spell_lodestone, [8, 9, 8], lodeShape, true, [[7, 11, 3], [8, 10, 4], [7, 14, 2], [1, 2, 2], [14, 1, 3]]),
+  spell_haste: (c) => luminous(c, ICON_PAL.spell_haste, [8, 8, 8], hasteShape, true,
+    [[0, 4, 2], [1, 4, 2], [2, 4, 3], [0, 10, 2], [1, 10, 3], [12, 11, 2], [13, 11, 2], [14, 11, 3], [14, 3, 3]]),
+  spell_net: (c) => luminous(c, ICON_PAL.spell_net, [8, 8, 8.5], netShape, false, [[0, 1, 3], [15, 14, 3]]),
+  spell_harvest: (c) => luminous(c, ICON_PAL.spell_harvest, [8, 7, 8], harvestShape, true, [[1, 2, 3], [14, 3, 2], [2, 10, 2]]),
+};
 
 export const spellIconUrls: Partial<Record<SpellId, string>> = {};
 
@@ -235,41 +328,6 @@ export const nodeIconUrls: Partial<Record<NodeId, string>> = {};
 
 // ---------------- world textures ----------------
 
-/** Rune circle, 48×48, 4 frames: the glyph ring turns a quarter step per frame. */
-function runeCircle(c: Ctx, f: number, ox: number, ink: string, glow: string): void {
-  const cx = ox + 24, cy = 24;
-  c.save();
-  c.beginPath();
-  c.rect(ox, 0, 48, 48);
-  c.clip();
-  const ring = (rad: number, color: string) => {
-    for (let a = 0; a < 360; a += 3) {
-      const t = (a * Math.PI) / 180;
-      r(c, color, Math.round(cx + Math.cos(t) * rad), Math.round(cy + Math.sin(t) * rad * 0.5), 1, 1);
-    }
-  };
-  ring(22, glow);
-  ring(21, ink);
-  ring(15, ink);
-  for (let g = 0; g < 8; g++) {
-    const t = ((g * 45 + f * 11) * Math.PI) / 180;
-    const gx = Math.round(cx + Math.cos(t) * 18), gy = Math.round(cy + Math.sin(t) * 9);
-    const shape = (g + f) % 3;
-    if (shape === 0) { r(c, glow, gx - 1, gy - 1, 3, 1); r(c, glow, gx, gy - 1, 1, 3); }
-    else if (shape === 1) { r(c, glow, gx - 1, gy, 3, 1); px(c, glow, [[gx - 1, gy - 1], [gx + 1, gy + 1]]); }
-    else { r(c, glow, gx, gy - 1, 1, 3); px(c, WHITE, [[gx, gy]]); }
-  }
-  for (let s = 0; s < 3; s++) {
-    const t = ((s * 120 - f * 15) * Math.PI) / 180;
-    const ax = cx + Math.cos(t) * 15, ay = cy + Math.sin(t) * 7.5;
-    const t2 = (((s + 1) * 120 - f * 15) * Math.PI) / 180;
-    const bx = cx + Math.cos(t2) * 15, by = cy + Math.sin(t2) * 7.5;
-    for (let i = 0; i <= 12; i++) r(c, ink, Math.round(ax + ((bx - ax) * i) / 12), Math.round(ay + ((by - ay) * i) / 12), 1, 1);
-  }
-  r(c, WHITE, cx - 1, cy, 2, 1);
-  c.restore();
-}
-
 function etherVein(c: Ctx, f: number, ox: number): void {
   r(c, K, ox + 2, 15, 14, 4); r(c, '#3b3348', ox + 3, 16, 12, 2);
   const crystal = (x: number, h: number, w: number) => {
@@ -329,35 +387,103 @@ function runeBolt(c: Ctx, f: number, ox: number): void {
   px(c, WHITE, [[ox + (f ? 4 : 3), 3]]);
 }
 
+/** Stable per-pixel noise in [0, 1) so painted edges are ragged but identical every build. */
+function noise(x: number, y: number): number {
+  return (((x * 73856093) ^ (y * 19349663)) >>> 0) % 997 / 997;
+}
+
+/** Thick ember lance, 24×10, 2 flicker frames. */
+function emberLance(c: Ctx, f: number, ox: number): void {
+  r(c, EMBER_DK, ox + 0, 4, 8, 2);
+  r(c, EMBER_DK, ox + 3, 3, 8, 4);
+  r(c, EMBER, ox + 6, 2, 11, 6);
+  r(c, EMBER_HI, ox + 11, 3, 9, 4);
+  r(c, WHITE, ox + 15, 4, 6, 2);
+  r(c, WHITE, ox + 21, 4, 2, 2);
+  r(c, EMBER_HI, ox + 20, 3, 1, 4);
+  px(c, EMBER_HI, f ? [[ox + 2, 2], [ox + 7, 8], [ox + 12, 1]] : [[ox + 1, 7], [ox + 9, 1], [ox + 13, 8]]);
+  px(c, EMBER, f ? [[ox + 0, 6], [ox + 5, 1]] : [[ox + 1, 3], [ox + 4, 8]]);
+}
+
+/** Fire burst, 32×32, 5 frames: white core blooms into a ragged fireball, then breaks into embers. */
+function fireBurst(c: Ctx, f: number, ox: number): void {
+  const outer = [6, 10, 13, 15, 15][f];
+  const hollow = [0, 0, 4, 9, 12][f];
+  for (let y = 0; y < 32; y++) {
+    for (let x = 0; x < 32; x++) {
+      const d = Math.hypot(x - 15.5, (y - 15.5) * 1.1) + noise(x + f * 7, y) * 3 - 1.5;
+      if (d > outer || d < hollow) continue;
+      const t = (d - hollow) / Math.max(1, outer - hollow);
+      if (f >= 3 && noise(x, y + f * 13) < (f === 3 ? 0.35 : 0.7)) continue;
+      const color = f === 4 ? (t > 0.5 ? EMBER_DK : EMBER)
+        : t > 0.8 ? EMBER_DK : t > 0.55 ? EMBER : t > 0.25 || f >= 2 ? EMBER_HI : WHITE;
+      r(c, color, ox + x, y, 1, 1);
+    }
+  }
+  if (f <= 1) r(c, WHITE, ox + 13, 13, 6, 6);
+  if (f >= 2) px(c, EMBER_HI, [[ox + 4, 6], [ox + 27, 9], [ox + 6, 26], [ox + 25, 25], [ox + 15, 2]]);
+}
+
+/** Rune shield, 32×32, 6 frames: a segmented hexagon that turns 10° per frame (one 60° symmetry step per loop). */
+function wardShield(c: Ctx, f: number, ox: number): void {
+  const cx = ox + 16, cy = 16;
+  for (let y = 4; y < 28; y++) for (let x = 4; x < 28; x++) {
+    if ((x + y + f) % 4 === 0 && Math.hypot(x - 16, y - 16) < 10) r(c, '#2b7f88', ox + x, y, 1, 1);
+  }
+  for (let k = 0; k < 6; k++) {
+    const a0 = ((k * 60 + f * 10) * Math.PI) / 180, a1 = (((k + 1) * 60 + f * 10) * Math.PI) / 180;
+    const lit = k === f % 6 || k === (f + 3) % 6;
+    for (const [rad, color] of [[14, lit ? WHITE : CYAN_HI], [13, CYAN], [12, '#2b7f88']] as const) {
+      const ax = Math.cos(a0) * rad, ay = Math.sin(a0) * rad, bx = Math.cos(a1) * rad, by = Math.sin(a1) * rad;
+      for (let i = 2; i <= 14; i++) r(c, color, Math.round(cx + ax + ((bx - ax) * i) / 16), Math.round(cy + ay + ((by - ay) * i) / 16), 1, 1);
+    }
+    const am = (a0 + a1) / 2, gx = Math.round(cx + Math.cos(am) * 9), gy = Math.round(cy + Math.sin(am) * 9);
+    const glyph = lit ? WHITE : CYAN_HI;
+    if (k % 2) { r(c, glyph, gx - 1, gy, 3, 1); r(c, glyph, gx, gy - 1, 1, 3); }
+    else { r(c, glyph, gx, gy - 1, 1, 3); px(c, glyph, [[gx - 1, gy - 1], [gx + 1, gy + 1]]); }
+  }
+}
+
+/** Scorch decal, 24×12: dithered charred oval, drawn with normal blend on the ground. */
+function scorch(c: Ctx): void {
+  for (let y = 0; y < 12; y++) for (let x = 0; x < 24; x++) {
+    const d = Math.hypot((x - 11.5) / 11.5, (y - 5.5) / 5.5) + noise(x, y) * 0.3;
+    if (d > 1.05) continue;
+    if (d > 0.75 && (x + y) % 2) continue;
+    r(c, d < 0.45 ? K : d < 0.8 ? '#2a1e1c' : '#4a2a1e', x, y, 1, 1);
+  }
+  px(c, EMBER_DK, [[8, 5], [14, 6], [11, 4]]);
+}
+
 export function buildFerroArt(scene: Phaser.Scene): void {
   for (const [id, draw] of Object.entries(ICONS)) {
     const el = canvas(16, 16, draw);
     if (!scene.textures.exists(`icon_${id}`)) scene.textures.addCanvas(`icon_${id}`, el);
     iconUrls[id as keyof typeof ICONS] = el.toDataURL();
   }
-  spellIconUrls.spell_ember = canvas(16, 16, spellEmber).toDataURL();
-  spellIconUrls.spell_ward = canvas(16, 16, spellWard).toDataURL();
-  spellIconUrls.spell_lodestone = canvas(16, 16, spellLode).toDataURL();
+  for (const [id, draw] of Object.entries(SPELL_ICONS)) spellIconUrls[id as SpellId] = canvas(16, 16, draw).toDataURL();
   for (const [id, draw] of Object.entries(NODE_ICONS)) nodeIconUrls[id as NodeId] = canvas(16, 16, draw).toDataURL();
   for (const node of Object.values(SKILL_NODES)) if (node.unlocksSpell) nodeIconUrls[node.id] = spellIconUrls[node.unlocksSpell];
 
-  strip(scene, 'rune_ember', 48, 48, 4, (c, f, ox) => runeCircle(c, f, ox, EMBER_DK, EMBER_HI));
-  strip(scene, 'rune_ward', 48, 48, 4, (c, f, ox) => runeCircle(c, f, ox, '#2b7f88', CYAN_HI));
-  strip(scene, 'rune_lode', 48, 48, 4, (c, f, ox) => runeCircle(c, f, ox, ETHER_DK, ETHER_HI));
+  buildRuneArt(scene);
   strip(scene, 'ether_vein', 18, 20, 2, etherVein);
   strip(scene, 'cobalto', 20, 24, 6, cobalto);
   strip(scene, 'ember_spear', 16, 8, 2, emberSpear);
   strip(scene, 'rune_bolt', 8, 8, 2, runeBolt);
+  strip(scene, 'ember_lance', 24, 10, 2, emberLance);
+  strip(scene, 'fire_burst', 32, 32, 5, fireBurst);
+  strip(scene, 'ward_shield', 32, 32, 6, wardShield);
+  strip(scene, 'scorch', 24, 12, 1, (c) => scorch(c));
 
   const anim = (key: string, tex: string, frames: number[], rate: number, repeat = -1) => {
     if (!scene.anims.exists(key)) scene.anims.create({ key, frames: scene.anims.generateFrameNumbers(tex, { frames }), frameRate: rate, repeat });
   };
-  anim('rune-ember-spin', 'rune_ember', [0, 1, 2, 3], 12);
-  anim('rune-ward-spin', 'rune_ward', [0, 1, 2, 3], 10);
-  anim('rune-lode-spin', 'rune_lode', [0, 1, 2, 3], 10);
   anim('ether-shimmer', 'ether_vein', [0, 1], 2);
   anim('cobalto-idle', 'cobalto', [0, 1], 3);
   anim('cobalto-walk', 'cobalto', [2, 3], 7);
   anim('ember-flicker', 'ember_spear', [0, 1], 16);
   anim('bolt-flicker', 'rune_bolt', [0, 1], 14);
+  anim('lance-flicker', 'ember_lance', [0, 1], 18);
+  anim('fire-burst', 'fire_burst', [0, 1, 2, 3, 4], 16, 0);
+  anim('ward-shimmer', 'ward_shield', [0, 1, 2, 3, 4, 5], 5);
 }

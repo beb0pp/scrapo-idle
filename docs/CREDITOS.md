@@ -2,7 +2,7 @@
 
 ## Assets usados no jogo
 
-Toda a arte da Ferromancia é original, pintada por código em `src/art/ferroArt.ts` com a paleta do projeto: ícones de reagentes, ícones de feitiços, círculos rúnicos, Veio de Éter, Cobalto, lança de brasa e seta rúnica. Nenhum asset de terceiros foi importado.
+Toda a arte da Ferromancia é original, pintada por código em `src/art/ferroArt.ts` e `src/art/runeArt.ts` com a paleta do projeto: ícones de reagentes, ícones de feitiços, círculos mágicos, explosão de impacto, setas de atração, redemoinho, explosão espinhosa, Veio de Éter, Cobalto, lança de brasa e seta rúnica. Nenhum asset de terceiros foi importado.
 
 ## Pacotes avaliados (não importados)
 
@@ -42,3 +42,13 @@ Não abertas na pesquisa; nenhuma arte foi copiada.
 - https://www.google.com/search?tbm=isch&q=pixel+art+spell+effect+rune+circle+16-bit
 - https://www.pinterest.com/search/pins/?q=pixel%20art%20skill%20tree%20ui
 - https://pathofexile.com/passive-skill-tree (arte oficial; estudar só a forma dos nós)
+
+## Referências visuais (só direção de estilo, nada copiado)
+
+Imagens enviadas pelo usuário, de licença desconhecida. Serviram só para orientar estilo (forma, leitura, hierarquia de luz); nenhum pixel foi copiado ou traçado. Toda a arte correspondente foi desenhada do zero por código.
+
+- Círculo mágico em pixel art (Pinterest, autor desconhecido): anel duplo, faixa de glifos, polígono estrelado com nós e sigilo central.
+- Folha de ícones roxos de árvore de habilidades (autor desconhecido): ícone em quadro claro de 1 px sobre fundo escuro, silhueta luminosa num só matiz.
+- Folha de VFX em pixel art de BDragon1727 (itch.io): redemoinho de crescentes, anel de setas convergentes, explosão radial espinhosa.
+- Folha de clarão de disparo e impacto "GBE v2.1" (autor desconhecido): impacto em 4 estágios, de disco cheio a anel pontilhado.
+- Padrão de contas em círculo rúnico vermelho (autor desconhecido): faixa de runas ao redor do círculo.

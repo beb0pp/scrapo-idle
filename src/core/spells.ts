@@ -1,4 +1,4 @@
-import { ALLIES, SPELLS, TRANSMUTES, type AllyId, type FormationSlot, type MemberId, type SpellId, type TransmuteId } from '../data/ferromancy';
+import { ALLIES, SPELLS, TRANSMUTES, type AllyId, type FerroMods, type FormationSlot, type MemberId, type SpellId, type TransmuteId } from '../data/ferromancy';
 import { ITEMS } from '../data/items';
 import type { Result } from './economy';
 import { alchemyUnlocked, ferroMods, owns, unlockedSpells } from './progression';
@@ -20,6 +20,21 @@ export function spellPower(state: GameState, id: SpellId, empowered = false): nu
   const mods = ferroMods(state);
   const base = SPELLS[id].power * mods.spellPowerMul * (empowered ? EMPOWER_MUL : 1);
   return Math.round(id === 'spell_ward' ? base * mods.wardMul : base);
+}
+
+/** Runtime only (never saved): active auxílio buffs, `until` on the wall clock. */
+export interface SpellBuffs {
+  haste?: { until: number; power: number };
+  net?: { until: number; power: number };
+}
+
+export const MIN_SEARCH_MUL = 0.2;
+
+export function buffedMods(mods: FerroMods, buffs: SpellBuffs, now: number): FerroMods {
+  const out = { ...mods };
+  if (buffs.haste && buffs.haste.until > now) out.searchTimeMul = mods.searchTimeMul * Math.max(MIN_SEARCH_MUL, 1 - buffs.haste.power / 100);
+  if (buffs.net && buffs.net.until > now) out.pickupRadius = mods.pickupRadius + buffs.net.power;
+  return out;
 }
 
 export function equipSpell(state: GameState, slot: number, id: SpellId | null): Result {
