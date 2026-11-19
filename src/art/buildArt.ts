@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
-import type { DecorId } from '../core/decor';
+import type { BenchUpgradeId, DecorId } from '../core/decor';
 
-// Workshop-plot props for the Pátio: one per Ferromancy build plus progress decor, 3/4 view like props.ts.
+// Workshop-plot props for the Pátio: buildings, bench upgrades and progress decor, 3/4 view like props.ts.
 // Origin is bottom-centre; each strip holds its animation frames side by side.
 
 type Ctx = CanvasRenderingContext2D;
@@ -35,7 +35,6 @@ const GOLD_HI = '#fff2b0';
 const RED = '#e8433a';
 const PCB = '#2f7a4a';
 const PCB_HI = '#58b06a';
-const SCREEN = '#0e1a1c';
 
 function rect(c: Ctx, color: string, x: number, y: number, w: number, h: number): void {
   c.fillStyle = color;
@@ -104,63 +103,41 @@ function workshop(c: Ctx): void {
   rect(c, GOLD_HI, 15, 3, 3, 1); rect(c, EMBER_HI, 15, 4, 3, 1);
 }
 
-/** Anvil on a stump in front of a rack of hanging wrenches. */
-function toolRack(c: Ctx): void {
-  rect(c, INK, 0, 1, 3, 17); rect(c, INK, 19, 1, 3, 17);
-  rect(c, WOOD, 1, 2, 1, 15); rect(c, WOOD, 20, 2, 1, 15);
-  rect(c, INK, 0, 2, 22, 3); rect(c, WOOD_HI, 1, 3, 20, 1);
-  for (const [x, len] of [[4, 6], [7, 8], [10, 5], [14, 7], [17, 6]] as [number, number][]) {
-    rect(c, INK, x - 1, 4, 3, len + 2);
-    rect(c, STEEL_HI, x, 5, 1, len);
-    rect(c, STEEL_LT, x - 1, 4 + len, 3, 2);
-    rect(c, INK, x, 5 + len, 1, 1);
-  }
-  ellipse(c, INK, 11, 17, 6, 4);
-  rect(c, INK, 5, 16, 13, 6);
-  rect(c, WOOD, 6, 17, 11, 4);
-  ellipse(c, WOOD_HI, 11, 16, 5, 2);
-  ellipse(c, WOOD, 11, 16, 2, 1);
-  rect(c, WOOD_DK, 8, 18, 1, 3); rect(c, WOOD_DK, 13, 18, 1, 3);
-  rect(c, INK, 3, 9, 15, 5); rect(c, INK, 7, 13, 7, 3);
-  rect(c, STEEL, 4, 10, 13, 3); rect(c, STEEL_HI, 4, 10, 13, 1);
-  rect(c, STEEL, 2, 10, 2, 1); rect(c, IRON, 8, 13, 5, 2);
-  rect(c, STEEL_LT, 6, 10, 3, 1);
+/** Tool rail on two posts behind the bench: wrenches, hammer, pliers and a screwdriver hung in a row. */
+function benchPegboard(c: Ctx): void {
+  rect(c, INK, 0, 0, 3, 18); rect(c, INK, 19, 0, 3, 18);
+  rect(c, WOOD, 1, 1, 1, 17); rect(c, WOOD, 20, 1, 1, 17);
+  rect(c, INK, 2, 1, 18, 11);
+  rect(c, BOARD, 3, 2, 16, 9);
+  for (let y = 3; y < 11; y += 3) for (let x = 4; x < 19; x += 3) rect(c, WOOD_DK, x, y, 1, 1);
+  rect(c, STEEL_LT, 4, 2, 3, 2); rect(c, STEEL_HI, 5, 4, 1, 6); rect(c, BOARD, 5, 2, 1, 1);
+  rect(c, IRON, 8, 2, 4, 2); rect(c, STEEL_HI, 8, 2, 4, 1); rect(c, WOOD_DK, 9, 4, 1, 6);
+  rect(c, STEEL_LT, 13, 2, 3, 3); rect(c, RED, 13, 5, 1, 4); rect(c, RED, 15, 5, 1, 4);
+  rect(c, GOLD, 17, 2, 1, 3); rect(c, STEEL_LT, 17, 5, 1, 4);
+  rect(c, INK, 2, 12, 18, 2); rect(c, WOOD_HI, 3, 12, 16, 1);
 }
 
-/** Steel bench with circuit boards and a glowing cyan monitor. */
-function moduleBench(c: Ctx): void {
-  rect(c, INK, 13, 0, 11, 10);
-  rect(c, GLASS, 14, 1, 9, 8);
-  rect(c, SCREEN, 15, 2, 7, 5);
-  rect(c, CYAN, 16, 3, 5, 1); rect(c, CYAN_HI, 16, 5, 3, 1); rect(c, CYAN_DK, 19, 5, 2, 1);
-  rect(c, PCB_HI, 21, 7, 1, 1);
-  rect(c, INK, 0, 9, 24, 8);
-  rect(c, STEEL_HI, 1, 10, 22, 2);
-  rect(c, STEEL, 1, 12, 22, 1);
-  rect(c, IRON, 1, 13, 22, 3);
-  rect(c, INK, 1, 16, 3, 4); rect(c, INK, 20, 16, 3, 4);
-  rect(c, IRON, 2, 16, 1, 3); rect(c, IRON, 21, 16, 1, 3);
-  rect(c, INK, 1, 6, 10, 5); rect(c, PCB, 2, 7, 8, 3);
-  rect(c, INK, 3, 8, 2, 1); rect(c, INK, 7, 7, 2, 2); rect(c, GOLD, 5, 7, 1, 1); rect(c, GOLD, 6, 9, 3, 1); rect(c, PCB_HI, 2, 7, 1, 1);
-  rect(c, INK, 4, 4, 6, 3); rect(c, PCB_HI, 5, 5, 4, 1);
-  rect(c, CYAN, 12, 13, 1, 5); rect(c, RED, 15, 13, 1, 4); rect(c, CYAN_HI, 12, 13, 1, 1);
-  rect(c, EMBER_HI, 10, 11, 1, 1);
+/** Bench vise holding a circuit board, its LED lit: the module bench is part of the same table now. */
+function benchVise(c: Ctx): void {
+  rect(c, INK, 4, 0, 6, 5); rect(c, PCB, 5, 1, 4, 3); rect(c, GOLD, 5, 3, 1, 1); rect(c, PCB_HI, 8, 1, 1, 1); rect(c, CYAN_HI, 6, 1, 1, 1);
+  rect(c, INK, 1, 3, 4, 6); rect(c, INK, 9, 3, 4, 6);
+  rect(c, STEEL_HI, 2, 4, 2, 1); rect(c, STEEL, 2, 5, 2, 3);
+  rect(c, STEEL_HI, 10, 4, 2, 1); rect(c, STEEL, 10, 5, 2, 3);
+  rect(c, INK, 0, 8, 14, 3); rect(c, IRON, 1, 9, 12, 1);
+  rect(c, STEEL_LT, 0, 5, 1, 3);
 }
 
-/** Calibration stand: copper gear on a post, servo arm and a status light. */
-function servoStand(c: Ctx): void {
-  ellipse(c, INK, 8, 19, 7, 3); ellipse(c, STEEL, 8, 18, 6, 2); ellipse(c, STEEL_HI, 8, 17, 4, 1);
-  rect(c, INK, 6, 6, 4, 13); rect(c, STEEL_HI, 7, 7, 1, 11); rect(c, STEEL, 8, 7, 1, 11);
-  disc(c, INK, 8, 9, 6);
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    rect(c, INK, Math.round(8 + Math.cos(a) * 6) - 1, Math.round(9 + Math.sin(a) * 6) - 1, 3, 3);
-    rect(c, COPPER_DK, Math.round(8 + Math.cos(a) * 6), Math.round(9 + Math.sin(a) * 6), 1, 1);
-  }
-  disc(c, COPPER, 8, 9, 5); disc(c, COPPER_HI, 7, 8, 2); disc(c, COPPER_DK, 8, 9, 1); rect(c, INK, 8, 9, 1, 1);
-  disc(c, INK, 13, 15, 3); disc(c, STEEL_HI, 13, 15, 2); rect(c, INK, 13, 15, 1, 1);
-  rect(c, INK, 9, 1, 7, 3); rect(c, STEEL_LT, 10, 2, 5, 1); rect(c, RED, 14, 1, 2, 1);
-  rect(c, INK, 1, 13, 4, 4); rect(c, SCREEN, 2, 14, 2, 2); rect(c, CYAN, 2, 14, 1, 1);
+/** Servo arm clamped to the bench's right end: copper shoulder, steel boom and a two-finger gripper. */
+function benchServoArm(c: Ctx): void {
+  rect(c, INK, 0, 12, 6, 3); rect(c, STEEL_HI, 0, 13, 5, 1);
+  rect(c, INK, 4, 12, 3, 10); rect(c, STEEL, 5, 14, 1, 6);
+  rect(c, INK, 0, 19, 6, 3); rect(c, STEEL, 0, 20, 5, 1);
+  rect(c, INK, 4, 5, 3, 8); rect(c, STEEL_HI, 5, 6, 1, 6);
+  disc(c, INK, 5, 5, 3); disc(c, COPPER, 5, 5, 2); rect(c, COPPER_HI, 4, 4, 1, 1); rect(c, COPPER_DK, 5, 5, 1, 1);
+  rect(c, INK, 7, 1, 8, 3); rect(c, STEEL_HI, 8, 2, 6, 1);
+  rect(c, INK, 13, 3, 3, 3); rect(c, INK, 12, 5, 2, 4); rect(c, INK, 15, 5, 2, 4);
+  rect(c, STEEL_LT, 13, 6, 1, 2); rect(c, STEEL_LT, 15, 6, 1, 2);
+  rect(c, CYAN, 5, 10, 1, 1);
 }
 
 /** Landing pad with an H mark and running lights that alternate between frames. */
@@ -302,10 +279,6 @@ const still = (fn: (c: Ctx) => void) => (c: Ctx, _f: number, ox: number) => { c.
 
 export const DECOR_ART: Record<DecorId, DecorArt> = {
   b_workshop: { key: 'decor_workshop', w: 22, h: 30, frames: 1, draw: still(workshop), glow: { dx: 5, dy: -26, color: 0xf6c870, scale: 0.9, alpha: 0.6 }, shadowW: 22 },
-  b_bench_tools: { key: 'decor_tool_rack', w: 22, h: 22, frames: 1, draw: still(toolRack), shadowW: 20 },
-  b_bench_modules: { key: 'decor_module_bench', w: 24, h: 20, frames: 1, draw: still(moduleBench), glow: { dx: 6, dy: -16, color: 0x5fd0d8, scale: 0.8, alpha: 0.55 }, shadowW: 24 },
-  b_drone_servos: { key: 'decor_servo_stand', w: 16, h: 22, frames: 1, draw: still(servoStand), shadowW: 14 },
-  b_drone_bay: { key: 'decor_drone_pad', w: 27, h: 13, frames: 2, draw: dronePad, anim: { key: 'decor-pad-blink', rate: 2 }, flat: true, glow: { dx: 0, dy: -6, color: 0x5fd0d8, scale: 0.7, alpha: 0.3 } },
   b_alchemy: { key: 'decor_alchemy', w: 24, h: 26, frames: 3, draw: alchemy, anim: { key: 'decor-alchemy-bubble', rate: 5 }, glow: { dx: -3, dy: -16, color: 0xb48ae6, scale: 1.1, alpha: 0.6 }, shadowW: 22 },
   b_alembic: { key: 'decor_alembic', w: 22, h: 28, frames: 3, draw: alembic, anim: { key: 'decor-alembic-drip', rate: 4 }, glow: { dx: -4, dy: -4, color: 0xf08a3a, scale: 0.7, alpha: 0.55 }, shadowW: 20 },
   swept_ground: { key: 'decor_swept', w: 48, h: 22, frames: 1, draw: still(sweptGround), flat: true },
@@ -315,8 +288,23 @@ export const DECOR_ART: Record<DecorId, DecorArt> = {
   reagent_crates: { key: 'decor_reagents', w: 22, h: 20, frames: 1, draw: still(reagentCrates), shadowW: 22 },
 };
 
+/** Where an upgrade sits on the bench: bottom-centre offset from the bench centre, and its layer. */
+export interface BenchUpgradeArt extends DecorArt {
+  dx: number;
+  dy: number;
+  /** behind: under the bench; top: over it; floor: on the ground beside it. */
+  layer: 'behind' | 'top' | 'floor';
+}
+
+export const BENCH_UPGRADE_ART: Record<BenchUpgradeId, BenchUpgradeArt> = {
+  b_bench_tools: { key: 'bench_up_pegboard', w: 22, h: 18, frames: 1, draw: still(benchPegboard), dx: 0, dy: 0, layer: 'behind' },
+  b_bench_modules: { key: 'bench_up_vise', w: 14, h: 11, frames: 1, draw: still(benchVise), dx: -5, dy: 1, layer: 'top', glow: { dx: 0, dy: -9, color: 0x5fd0d8, scale: 0.4, alpha: 0.4 } },
+  b_drone_servos: { key: 'bench_up_servo_arm', w: 17, h: 22, frames: 1, draw: still(benchServoArm), dx: 17, dy: 6, layer: 'top' },
+  b_drone_bay: { key: 'bench_up_drone_pad', w: 27, h: 13, frames: 2, draw: dronePad, anim: { key: 'decor-pad-blink', rate: 2 }, dx: 25, dy: 12, layer: 'floor', glow: { dx: 0, dy: -6, color: 0x5fd0d8, scale: 0.7, alpha: 0.3 } },
+};
+
 export function buildBuildArt(scene: Phaser.Scene): void {
-  for (const art of Object.values(DECOR_ART)) {
+  for (const art of [...Object.values(DECOR_ART), ...Object.values(BENCH_UPGRADE_ART)]) {
     if (scene.textures.exists(art.key)) continue;
     const tex = scene.textures.createCanvas(art.key, art.w * art.frames, art.h)!;
     const ctx = tex.getContext();

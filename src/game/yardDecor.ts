@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
-import { DECOR_ART } from '../art/buildArt';
-import { DECOR, decorFor, isUsable, newPlot, placeDecor, releaseDecor, tileKey, type DecorId, type Plot, type PlotGrid, type Tile } from '../core/decor';
-import { BUILD_NODES, type BuildNodeId } from '../data/ferromancy';
+import { BENCH_UPGRADE_ART, DECOR_ART, type DecorArt } from '../art/buildArt';
+import { DECOR, benchUpgrades, decorFor, isUsable, newPlot, placeDecor, releaseDecor, tileKey, type BenchUpgradeId, type DecorId, type Plot, type PlotBuildingId, type PlotGrid, type Tile } from '../core/decor';
+import { BUILD_NODES } from '../data/ferromancy';
 import { session } from '../session';
 import { setFerroTab, type FerroTab } from '../ui/ferroPanel';
 import { openPanel, type PanelKind } from '../ui/ui';
+
+type Glow = NonNullable<DecorArt['glow']>;
 
 const TILE = 16;
 const FLAT_DEPTH = -14;
@@ -12,13 +14,9 @@ const GLOW_DEPTH = 7001;
 /** Buildings stand at least 48 px apart, so two use radii never overlap. */
 const USE_RADIUS = 22;
 
-/** Each building opens what it is for: the build tree, the crafting bench, or the grimoire's transmutation. */
-const USE: Record<BuildNodeId, { panel: PanelKind; tab?: FerroTab }> = {
+/** Each building opens what it is for: the build tree or the grimoire's transmutation; bench upgrades open through the bench. */
+const USE: Record<PlotBuildingId, { panel: PanelKind; tab?: FerroTab }> = {
   b_workshop: { panel: 'ferro', tab: 'build' },
-  b_bench_tools: { panel: 'workshop' },
-  b_bench_modules: { panel: 'workshop' },
-  b_drone_servos: { panel: 'workshop' },
-  b_drone_bay: { panel: 'workshop' },
   b_alchemy: { panel: 'ferro', tab: 'grimoire' },
   b_alembic: { panel: 'ferro', tab: 'grimoire' },
 };
@@ -49,11 +47,12 @@ interface Placed {
 /** The workshop plot around the bench: props appear as builds, lamps and reagents come in. */
 export class YardDecor {
   private readonly placed = new Map<DecorId, Placed>();
+  private readonly upgrades = new Map<BenchUpgradeId, Phaser.GameObjects.GameObject[]>();
   private readonly plot: Plot;
   private readonly reserved: Set<string>;
   private readonly grid: PlotGrid;
 
-  constructor(private readonly scene: Phaser.Scene, benchX: number, benchY: number) {
+  constructor(private readonly scene: Phaser.Scene, private readonly benchX: number, private readonly benchY: number) {
     const host = scene as DecorHost;
     this.plot = newPlot({ x: Math.floor(benchX / TILE), y: Math.floor(benchY / TILE) });
     this.reserved = this.reservedTiles();
@@ -64,6 +63,7 @@ export class YardDecor {
   }
 
   private sync(reveal: boolean): void {
+    this.syncUpgrades(reveal);
     const wanted = decorFor(session.state);
     for (const [id, p] of this.placed) if (!wanted.includes(id)) this.remove(id, p);
     const fresh = wanted.filter((id) => !this.placed.has(id));
@@ -72,6 +72,29 @@ export class YardDecor {
       const parts = this.spawn(id, tile, reveal);
       this.placed.set(id, { tile, parts, use: isUsable(id) ? this.makeUsable(id, parts) : undefined });
     }
+  }
+
+  /** Upgrades are part of the bench: drawn on it, never interactable, the bench's own F opens the Oficina. */
+  private syncUpgrades(reveal: boolean): void {
+    const wanted = benchUpgrades(session.state);
+    for (const [id, parts] of this.upgrades) if (!wanted.includes(id)) {
+      this.upgrades.delete(id);
+      this.fadeOut(parts);
+    }
+    for (const id of wanted) if (!this.upgrades.has(id)) this.upgrades.set(id, this.spawnUpgrade(id, reveal));
+  }
+
+  private spawnUpgrade(id: BenchUpgradeId, reveal: boolean): Phaser.GameObjects.GameObject[] {
+    const art = BENCH_UPGRADE_ART[id];
+    const x = this.benchX + art.dx;
+    const foot = this.benchY + art.dy;
+    const depth = art.layer === 'floor' ? FLAT_DEPTH + 1 : art.layer === 'behind' ? this.benchY - 1 : this.benchY + 1;
+    const sprite = this.scene.add.sprite(x, foot, art.key, 0).setOrigin(0.5, 1).setDepth(depth);
+    if (art.anim) sprite.play(art.anim.key);
+    const parts: Phaser.GameObjects.GameObject[] = [sprite];
+    if (art.glow) parts.push(this.glow(art.glow, x + art.glow.dx, foot, reveal, x));
+    if (reveal) this.reveal(sprite, [], x, foot);
+    return parts;
   }
 
   /** Interact objects (spawns, notes, NPCs) and their neighbours stay walkable and visible. */
@@ -104,20 +127,22 @@ export class YardDecor {
     const sprite = s.add.sprite(x, foot + (art.flat ? 2 : 0), art.key, 0).setOrigin(0.5, 1).setDepth(depth).setFlipX(!!art.flip);
     if (art.anim) sprite.play({ key: art.anim.key, startFrame: (tile.x + tile.y) % art.frames });
     parts.push(sprite);
-    if (art.glow) {
-      const g = art.glow;
-      const glow = s.add.image(x + (art.flip ? -g.dx : g.dx), foot + g.dy, 'glow').setTint(g.color).setScale(g.scale).setBlendMode(Phaser.BlendModes.ADD).setDepth(GLOW_DEPTH);
-      const pulse = () => s.tweens.add({ targets: glow, alpha: g.alpha * 0.7, duration: 900 + ((tile.x * 131) % 500), yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-      if (reveal) s.tweens.add({ targets: glow.setAlpha(0), alpha: g.alpha, duration: 420, delay: 120, onComplete: pulse });
-      else { glow.setAlpha(g.alpha); pulse(); }
-      parts.push(glow);
-    }
+    if (art.glow) parts.push(this.glow(art.glow, x + (art.flip ? -art.glow.dx : art.glow.dx), foot, reveal, tile.x));
     if (reveal) this.reveal(sprite, parts.filter((p): p is Phaser.GameObjects.Ellipse => p instanceof Phaser.GameObjects.Ellipse), x, foot);
     return parts;
   }
 
+  private glow(g: Glow, x: number, foot: number, reveal: boolean, seed: number): Phaser.GameObjects.Image {
+    const s = this.scene;
+    const glow = s.add.image(x, foot + g.dy, 'glow').setTint(g.color).setScale(g.scale).setBlendMode(Phaser.BlendModes.ADD).setDepth(GLOW_DEPTH);
+    const pulse = () => s.tweens.add({ targets: glow, alpha: g.alpha * 0.7, duration: 900 + ((seed * 131) % 500), yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    if (reveal) s.tweens.add({ targets: glow.setAlpha(0), alpha: g.alpha, duration: 420, delay: 120, onComplete: pulse });
+    else { glow.setAlpha(g.alpha); pulse(); }
+    return glow;
+  }
+
   /** Hit area is the sprite's own bounds, so hover tints only this building. */
-  private makeUsable(id: BuildNodeId, parts: Phaser.GameObjects.GameObject[]): HostInteractable {
+  private makeUsable(id: PlotBuildingId, parts: Phaser.GameObjects.GameObject[]): HostInteractable {
     const sprite = parts.find((p): p is Phaser.GameObjects.Sprite => p instanceof Phaser.GameObjects.Sprite)!;
     const { panel, tab } = USE[id];
     const use: HostInteractable = {
@@ -162,6 +187,10 @@ export class YardDecor {
     releaseDecor(this.plot, id, p.tile);
     const list = (this.scene as DecorHost).interactables;
     if (p.use && list.includes(p.use)) list.splice(list.indexOf(p.use), 1);
-    this.scene.tweens.add({ targets: p.parts, alpha: 0, duration: 300, onComplete: () => p.parts.forEach((o) => o.destroy()) });
+    this.fadeOut(p.parts);
+  }
+
+  private fadeOut(parts: Phaser.GameObjects.GameObject[]): void {
+    this.scene.tweens.add({ targets: parts, alpha: 0, duration: 300, onComplete: () => parts.forEach((o) => o.destroy()) });
   }
 }
