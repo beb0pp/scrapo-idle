@@ -1393,9 +1393,14 @@ export class WorldScene extends Phaser.Scene {
   /** Each found item floats up from where it was found, with name and rarity in the rarity colour; rare ones flash. */
   private showLoot(x: number, y: number, bag: ItemBag): void {
     const entries = (Object.entries(bag) as [ItemId, number][]).sort(([a], [b]) => RARITY_ORDER.indexOf(rarityOf(b)) - RARITY_ORDER.indexOf(rarityOf(a)));
+    const zoom = this.cameras.main.zoom;
+    const hero = this.player.getBounds();
+    const overHero = Math.abs(x - hero.centerX) < hero.width / 2 + vfx.LOOT_HALF_WIDTH_PX / zoom;
+    // Finds next to the hero stack above the head, so the labels never cover the character.
+    const baseY = overHero ? Math.min(y - 6, hero.top - vfx.LOOT_ROW_PX / zoom) : y - 6;
     entries.forEach(([id, n], i) => {
       const r = RARITY[rarityOf(id)];
-      vfx.lootPopup(this, { x, y: y - 6 - i * 12 }, `icon_${id}`, `+${n} ${ITEMS[id].name} · ${r.label}`, r.color, i * 140);
+      vfx.lootPopup(this, { x, y: baseY - (i * vfx.LOOT_ROW_PX) / zoom }, `icon_${id}`, `+${n} ${ITEMS[id].name} · ${r.label}`, r.color, i * 140);
       toast(`+${n} ${ITEMS[id].name} · ${r.label}`, 'loot', r.color);
     });
   }
