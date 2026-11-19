@@ -67,6 +67,13 @@
 #panel .mochila .mo-at-hands { grid-area: hands; }
 #panel .mochila .mo-at-feet { grid-area: feet; }
 
+#panel .money.coin-pop { display: inline-block; animation: coin-pop 0.45s ease-out; }
+@keyframes coin-pop {
+  0% { transform: scale(1); color: inherit; }
+  35% { transform: scale(1.35); color: #f6c84a; text-shadow: 0 0 6px rgba(246, 200, 74, 0.8); }
+  100% { transform: scale(1); }
+}
+
 #panel .mochila .mo-stage {
   grid-area: stage;
   align-self: stretch;
