@@ -58,6 +58,7 @@ test('b. construir, aprender, transmutar e equipar pela UI, sem cobrança dupla'
   await openFerro(page, 'build');
 
   const scrap0 = await inv(page, 'scrap');
+  await node(page, 'b_workshop').click();
   await page.evaluate(() => {
     const b = document.querySelector<HTMLButtonElement>('[data-act="f-build:b_workshop"]')!;
     b.click();
@@ -67,6 +68,7 @@ test('b. construir, aprender, transmutar e equipar pela UI, sem cobrança dupla'
   expect(await inv(page, 'scrap')).toBe(scrap0 - 6);
   expect(await readState<string[]>(page, 's.ferro.built')).toEqual(['b_workshop']);
 
+  await node(page, 'b_alchemy').click();
   await page.locator('[data-act="f-build:b_alchemy"]').click();
   await expect(node(page, 'b_alchemy')).toHaveAttribute('data-status', 'owned');
   expect(await inv(page, 'scrap')).toBe(scrap0 - 14);
@@ -74,6 +76,7 @@ test('b. construir, aprender, transmutar e equipar pela UI, sem cobrança dupla'
 
   await page.locator('[data-act="f-tab:skill"]').click();
   for (const id of ['s_mag_init', 's_mag_ward', 's_mag_lode']) {
+    await node(page, id).click();
     await page.locator(`[data-act="f-learn:${id}"]`).click();
     await expect(node(page, id)).toHaveAttribute('data-status', 'owned');
   }
@@ -142,7 +145,7 @@ test('d. conjurar no Auto: Égide com vida baixa e Lança em alcance', async ({ 
 test.describe.serial('e/f. recrutar, sinergia e persistência', () => {
   let page: Page;
   test.beforeAll(async ({ browser }) => {
-    page = await (await browser.newContext({ viewport: { width: 1280, height: 800 }, baseURL: 'http://localhost:5192' })).newPage();
+    page = await (await browser.newContext({ viewport: { width: 1280, height: 800 }, baseURL: test.info().project.use.baseURL })).newPage();
     await seedSave(page, {
       inventory: { scrap: 12, cell: 1, reagent_ward: 2, reagent_ember: 3 },
       ferro: { ...MAGE, built: ['b_workshop', 'b_bench_modules', 'b_alchemy'] },

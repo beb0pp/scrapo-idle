@@ -4,6 +4,7 @@ import type { ItemId } from '../data/items';
 import { countOf } from '../core/state';
 import { session } from '../session';
 import { $, esc, icon } from './shared';
+import { setFerroTab } from './ferroPanel';
 import './ferro.css';
 
 let spellClick: (slot: number) => void = () => {};
@@ -27,6 +28,7 @@ export function initFerroHud(): void {
     const button = (event.target as HTMLElement).closest('button');
     if (!button) return;
     if (button.id === 'ferro-btn') openFerro();
+    else if (button.classList.contains('is-empty')) { setFerroTab('grimoire'); openFerro(); }
     else if (button.dataset.spellSlot) spellClick(Number(button.dataset.spellSlot));
   });
   document.addEventListener('keydown', (event) => {
@@ -45,7 +47,7 @@ function renderSpellbar(): void {
   const state = session.state;
   const slots = SPELL_KEYS.map((key, slot) => {
     const id = state.ferro.loadout[slot];
-    if (!id) return `<button class="spell-slot is-empty" data-spell-slot="${slot}" title="Atalho ${key} vazio: equipe um feitiço (K)"><b>${key}</b><span>vazio</span><i class="cd"></i></button>`;
+    if (!id) return `<button class="spell-slot is-empty" data-spell-slot="${slot}" title="Vazio — clique para equipar um feitiço"><b>${key}</b><span>vazio</span><i class="cd"></i></button>`;
     const spell = SPELLS[id];
     const [reagent, qty] = Object.entries(spell.cost)[0] as [ItemId, number];
     const have = countOf(state, reagent);

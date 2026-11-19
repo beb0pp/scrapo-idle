@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { iconUrls } from './sprites';
-import type { SpellId } from '../data/ferromancy';
+import { SKILL_NODES, type NodeId, type SpellId } from '../data/ferromancy';
 
 // Original Ferromancia pixel art, painted by code in the game's 16-bit palette (see docs/CREDITOS.md).
 
@@ -21,6 +21,11 @@ const EMBER = '#f08a3a';
 const EMBER_HI = '#ffd27a';
 const EMBER_DK = '#a8341e';
 const WHITE = '#ffffff';
+const WOOD = '#8b6340';
+const WOOD_HI = '#c08a55';
+const WOOD_DK = '#5a3d26';
+const COPPER_HI = '#f0a860';
+const GLASS = '#3a3f52';
 
 function r(c: Ctx, color: string, x: number, y: number, w: number, h: number): void {
   c.fillStyle = color;
@@ -112,6 +117,110 @@ function spellLode(c: Ctx): void {
 }
 
 export const spellIconUrls: Partial<Record<SpellId, string>> = {};
+
+// ---------------- tree node icons (16×16) ----------------
+
+const NODE_ICONS: Partial<Record<NodeId, (c: Ctx) => void>> = {
+  b_workshop: (c) => {
+    r(c, K, 1, 4, 13, 5); r(c, K, 0, 5, 2, 2);
+    r(c, STEEL, 2, 5, 11, 3); r(c, STEEL_HI, 2, 5, 11, 1);
+    r(c, K, 5, 9, 6, 3); r(c, IRON, 6, 9, 4, 2);
+    r(c, K, 3, 12, 10, 3); r(c, STEEL, 4, 12, 8, 2); r(c, IRON, 4, 13, 8, 1);
+    px(c, EMBER_HI, [[12, 1], [10, 2], [14, 3]]); px(c, EMBER, [[11, 0], [13, 2]]);
+  },
+  b_bench_tools: (c) => {
+    r(c, K, 1, 9, 14, 4); r(c, WOOD_HI, 2, 10, 12, 1); r(c, WOOD, 2, 11, 12, 1);
+    r(c, K, 2, 13, 3, 3); r(c, K, 11, 13, 3, 3); r(c, WOOD_DK, 3, 13, 1, 2); r(c, WOOD_DK, 12, 13, 1, 2);
+    for (let i = 0; i < 6; i++) r(c, K, 3 + i, 7 - i, 3, 3);
+    for (let i = 0; i < 6; i++) r(c, STEEL_HI, 4 + i, 7 - i, 1, 1);
+    r(c, K, 9, 0, 6, 5); r(c, STEEL, 10, 1, 4, 3); r(c, STEEL_HI, 10, 1, 4, 1); r(c, K, 12, 0, 1, 2);
+  },
+  b_bench_modules: (c) => {
+    for (const i of [5, 8, 10]) { r(c, COPPER, i, 1, 1, 2); r(c, COPPER, i, 13, 1, 2); r(c, COPPER, 1, i, 2, 1); r(c, COPPER, 13, i, 2, 1); }
+    r(c, K, 3, 3, 10, 10); r(c, IRON, 4, 4, 8, 8); r(c, STEEL, 5, 5, 6, 6); r(c, STEEL_HI, 5, 5, 6, 1);
+    r(c, K, 6, 6, 4, 4); r(c, CYAN, 7, 7, 2, 2); px(c, CYAN_HI, [[7, 7]]);
+  },
+  b_drone_servos: (c) => {
+    r(c, K, 1, 1, 14, 2); r(c, STEEL_HI, 2, 1, 12, 1); r(c, K, 7, 3, 2, 2);
+    r(c, K, 3, 7, 11, 5); r(c, K, 6, 4, 5, 11); r(c, K, 4, 5, 9, 9);
+    r(c, STEEL, 5, 6, 7, 7); r(c, STEEL, 4, 8, 9, 3); r(c, STEEL, 7, 5, 3, 9);
+    r(c, STEEL_HI, 5, 6, 3, 1); r(c, IRON, 9, 11, 3, 1);
+    r(c, K, 7, 8, 3, 3); r(c, COPPER, 8, 9, 1, 1);
+  },
+  b_drone_bay: (c) => {
+    r(c, K, 1, 7, 14, 8); r(c, WOOD, 2, 8, 12, 6); r(c, WOOD_HI, 2, 8, 12, 1);
+    r(c, K, 2, 11, 12, 1); r(c, WOOD_DK, 5, 9, 1, 5); r(c, WOOD_DK, 10, 9, 1, 5);
+    r(c, K, 2, 0, 4, 2); r(c, K, 10, 0, 4, 2); r(c, STEEL_HI, 3, 0, 2, 1); r(c, STEEL_HI, 11, 0, 2, 1);
+    r(c, K, 5, 1, 6, 5); r(c, STEEL, 6, 2, 4, 3); r(c, STEEL_HI, 6, 2, 4, 1); r(c, CYAN, 7, 4, 2, 1);
+  },
+  b_alchemy: (c) => {
+    for (let a = 0; a < 360; a += 10) {
+      const t = (a * Math.PI) / 180;
+      r(c, a % 90 === 0 ? ETHER : ETHER_DK, Math.round(7.5 + Math.cos(t) * 7), Math.round(7.5 + Math.sin(t) * 7), 1, 1);
+    }
+    r(c, K, 6, 3, 4, 3); r(c, WOOD, 7, 3, 2, 1);
+    r(c, K, 4, 6, 8, 7); r(c, GLASS, 5, 7, 6, 5); r(c, CYAN, 5, 9, 6, 3); r(c, CYAN_HI, 6, 9, 2, 1); r(c, '#cfd6e2', 5, 7, 1, 2);
+  },
+  b_alembic: (c) => {
+    r(c, K, 1, 7, 8, 8); r(c, COPPER, 2, 8, 6, 6); r(c, COPPER_HI, 3, 8, 2, 2); r(c, RUST, 2, 12, 6, 2);
+    r(c, K, 3, 3, 4, 5); r(c, COPPER, 4, 4, 2, 3);
+    r(c, K, 6, 3, 8, 2); r(c, STEEL_HI, 7, 3, 6, 1);
+    r(c, K, 12, 4, 2, 7); r(c, STEEL_HI, 12, 5, 1, 5);
+    r(c, K, 10, 10, 6, 6); r(c, GLASS, 11, 11, 4, 4); r(c, ETHER, 11, 12, 4, 3); px(c, ETHER_HI, [[11, 12]]);
+  },
+  s_cmb_arm: (c) => {
+    r(c, K, 3, 3, 10, 9); r(c, COPPER, 4, 4, 8, 7); r(c, COPPER_HI, 4, 4, 8, 1);
+    r(c, RUST, 6, 4, 1, 3); r(c, RUST, 8, 4, 1, 3); r(c, RUST, 10, 4, 1, 3); r(c, RUST, 4, 9, 8, 2);
+    r(c, K, 1, 7, 4, 4); r(c, COPPER, 2, 8, 2, 2);
+    r(c, K, 5, 12, 6, 4); r(c, STEEL, 6, 12, 4, 3); r(c, STEEL_HI, 6, 12, 4, 1);
+  },
+  s_cmb_dash: (c) => {
+    r(c, STEEL_HI, 0, 4, 6, 1); r(c, STEEL, 1, 8, 4, 1); r(c, STEEL_HI, 0, 11, 5, 1);
+    r(c, K, 4, 7, 5, 3); r(c, CYAN, 5, 8, 4, 1);
+    for (let i = 0; i < 6; i++) r(c, K, 8 + i, 2 + i, 1, 13 - 2 * i);
+    for (let i = 0; i < 5; i++) r(c, CYAN, 9 + i, 4 + i, 1, 9 - 2 * i);
+    r(c, CYAN_HI, 9, 6, 1, 5); px(c, WHITE, [[14, 8]]);
+  },
+  s_cmb_fury: (c) => {
+    r(c, K, 7, 0, 2, 2); r(c, K, 5, 2, 6, 3); r(c, K, 3, 5, 10, 10); r(c, K, 4, 15, 8, 1);
+    r(c, EMBER_DK, 6, 3, 4, 2); r(c, EMBER_DK, 4, 6, 8, 9);
+    r(c, EMBER, 5, 6, 6, 7); r(c, EMBER, 7, 1, 1, 4);
+    r(c, EMBER_HI, 6, 9, 4, 4); r(c, ETHER_HI, 7, 10, 2, 2); px(c, WHITE, [[7, 10]]);
+    px(c, ETHER, [[1, 4], [14, 6], [2, 12], [13, 13]]);
+  },
+  s_ext_eye: (c) => {
+    r(c, K, 1, 6, 14, 5); r(c, K, 3, 4, 10, 2); r(c, K, 3, 11, 10, 2);
+    r(c, '#e6e9f0', 2, 7, 12, 3); r(c, '#e6e9f0', 4, 5, 8, 6);
+    r(c, K, 5, 5, 6, 6); r(c, CYAN, 6, 5, 4, 6); r(c, '#2b7f88', 6, 9, 4, 2);
+    r(c, K, 7, 7, 2, 2); px(c, WHITE, [[6, 6]]);
+    px(c, K, [[2, 3], [7, 2], [13, 3]]);
+  },
+  s_ext_hands: (c) => {
+    r(c, K, 3, 1, 3, 6); r(c, K, 6, 0, 3, 7); r(c, K, 9, 1, 3, 6); r(c, K, 12, 5, 3, 5);
+    r(c, K, 3, 5, 10, 9);
+    r(c, WOOD, 4, 2, 1, 4); r(c, WOOD, 7, 1, 1, 5); r(c, WOOD, 10, 2, 1, 4); r(c, WOOD, 13, 6, 1, 3);
+    r(c, WOOD, 4, 6, 8, 7); r(c, WOOD_HI, 4, 6, 8, 1); r(c, WOOD_DK, 4, 11, 8, 2);
+    r(c, K, 3, 13, 10, 3); r(c, COPPER, 4, 13, 8, 2);
+    px(c, CYAN_HI, [[1, 3], [0, 6], [14, 1]]);
+  },
+  s_ext_magnet: (c) => {
+    r(c, K, 2, 2, 5, 12); r(c, K, 9, 2, 5, 12); r(c, K, 2, 9, 12, 5);
+    r(c, STEEL_HI, 3, 3, 3, 3); r(c, STEEL_HI, 10, 3, 3, 3);
+    r(c, RUST, 3, 6, 3, 7); r(c, RUST, 10, 6, 3, 7); r(c, RUST, 3, 10, 10, 3);
+    r(c, EMBER, 3, 6, 1, 6); r(c, EMBER, 4, 10, 8, 1);
+    px(c, CYAN_HI, [[7, 1], [8, 3], [1, 0], [14, 0]]);
+  },
+  s_mag_channel: (c) => {
+    const pts: [number, number][] = [];
+    for (let t = 0; t < Math.PI * 5; t += 0.12) pts.push([Math.round(7.5 + Math.cos(t) * t * 0.44), Math.round(7.5 + Math.sin(t) * t * 0.44)]);
+    px(c, K, pts.map(([x, y]) => [x + 1, y + 1]));
+    px(c, ETHER, pts);
+    px(c, ETHER_HI, pts.slice(0, 18));
+    px(c, WHITE, [[8, 8]]);
+  },
+};
+
+export const nodeIconUrls: Partial<Record<NodeId, string>> = {};
 
 // ---------------- world textures ----------------
 
@@ -218,6 +327,8 @@ export function buildFerroArt(scene: Phaser.Scene): void {
   spellIconUrls.spell_ember = canvas(16, 16, spellEmber).toDataURL();
   spellIconUrls.spell_ward = canvas(16, 16, spellWard).toDataURL();
   spellIconUrls.spell_lodestone = canvas(16, 16, spellLode).toDataURL();
+  for (const [id, draw] of Object.entries(NODE_ICONS)) nodeIconUrls[id as NodeId] = canvas(16, 16, draw).toDataURL();
+  for (const node of Object.values(SKILL_NODES)) if (node.unlocksSpell) nodeIconUrls[node.id] = spellIconUrls[node.unlocksSpell];
 
   strip(scene, 'rune_ember', 48, 48, 4, (c, f, ox) => runeCircle(c, f, ox, EMBER_DK, EMBER_HI));
   strip(scene, 'rune_ward', 48, 48, 4, (c, f, ox) => runeCircle(c, f, ox, '#2b7f88', CYAN_HI));
