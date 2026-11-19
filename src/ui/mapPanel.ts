@@ -3,17 +3,20 @@ import { forecast } from '../core/huntForecast';
 import { levelOf } from '../core/level';
 import { ELEMENT_IDS, ELEMENTS, type ElementId } from '../data/elements';
 import { ENEMY_INFO, ENEMY_KINDS, type EnemyKind } from '../data/enemies';
-import { REGIONS, areaById, areasIn, regionById, type HuntArea, type Region } from '../data/hunt';
+import { PATIO_POS, WORLD_ID, WORLD_ZONES, worldPos } from '../core/worldLayout';
+import { AREAS, REGIONS, areaById, areasIn, regionById, type HuntArea, type Region } from '../data/hunt';
 import { session } from '../session';
 import { currentHuntArea, travelToArea } from '../travel';
 import { elementChip } from './elementChip';
-import { paintRegionMap } from './mapCanvas';
+import { paintRegionMap, paintWorldMap } from './mapCanvas';
 import { detailCard, footer, listTable, marker, MODE_HELP, MODE_LABEL, regionTabs, tipCard } from './mapMarkup';
 import { attachMapView, type MapView } from './mapView';
 import { esc } from './shared';
+import { worldFooter, worldMarkers, worldZones } from './worldMarkup';
 import './map.css';
 
 interface MapUi {
+  /** Region id, WORLD_ID for the world view, null to pick the hero's default region. */
   region: string | null;
   filter: AreaFilter;
   view: 'map' | 'list';
@@ -22,7 +25,7 @@ interface MapUi {
   typeOpen: boolean;
 }
 
-const ui: MapUi = { region: null, filter: ANY_FILTER, view: 'map', sort: { key: 'level', dir: 'asc' }, selected: null, typeOpen: false };
+const ui: MapUi = { region: WORLD_ID, filter: ANY_FILTER, view: 'map', sort: { key: 'level', dir: 'asc' }, selected: null, typeOpen: false };
 let root: HTMLElement | null = null;
 let mapView: MapView | null = null;
 let paintedRegion = '';
@@ -31,7 +34,9 @@ let shownLevel = 0;
 const heroLevel = () => levelOf(session.state).level;
 const q = <T extends HTMLElement>(sel: string) => root!.querySelector<T>(sel)!;
 
-function region(): Region {
+/** Region shown, or null on the world view. */
+function region(): Region | null {
+  if (ui.region === WORLD_ID) return null;
   const level = heroLevel();
   const picked = ui.region ? regionById(ui.region) : undefined;
   if (picked && level >= picked.minLevel) return picked;
@@ -51,7 +56,7 @@ export function mountMapPanel(slot: Element | null): void {
 /** Called when the window opens: resets transient bits, keeps the player's filters. */
 export function resetMapPanel(): void {
   ui.typeOpen = false;
-  ui.region = null;
+  ui.region = WORLD_ID;
 }
 
 function build(): void {
@@ -93,8 +98,8 @@ function build(): void {
   session.onChange(() => { if (root?.isConnected && heroLevel() !== shownLevel) refresh(); });
 }
 
-function visibleAreas(r: Region): { all: HuntArea[]; shown: HuntArea[] } {
-  const all = areasIn(r);
+function visibleAreas(r: Region | null): { all: HuntArea[]; shown: HuntArea[] } {
+  const all = r ? areasIn(r) : [...AREAS];
   return { all, shown: filterAreas(all, ui.filter, heroLevel()) };
 }
 
@@ -106,14 +111,15 @@ function refresh(): void {
   const r = region();
   const { all, shown } = visibleAreas(r);
   if (ui.selected && !shown.some((a) => a.id === ui.selected)) ui.selected = null;
-  q('.mapw-tabs').innerHTML = regionTabs(r.id, level);
+  q('.mapw-tabs').innerHTML = regionTabs(r?.id ?? WORLD_ID, level);
+  root.dataset.scope = r ? 'region' : 'world';
   renderType();
   renderSelects(all, level);
   root.querySelectorAll<HTMLElement>('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === ui.view)));
   root.dataset.layout = ui.view;
   if (ui.view === 'map') renderMap(r, all, shown, level);
   else q('.mapw-list').innerHTML = listTable(sortAreas(shown, ui.sort.key, ui.sort.dir), level, ui.sort, currentHuntArea());
-  q('.mapw-foot').textContent = footer(shown.length, all.length, r, ui.view);
+  q('.mapw-foot').textContent = r ? footer(shown.length, all.length, r, ui.view) : worldFooter(shown.length, all.length, ui.view);
   if (focusKey) root.querySelector<HTMLElement>(`[data-fk="${CSS.escape(focusKey)}"]`)?.focus();
 }
 
@@ -148,14 +154,19 @@ function renderSelects(all: HuntArea[], level: number): void {
   q<HTMLSelectElement>('[data-fk="level"]').innerHTML = options.map(([v, label]) => `<option value="${v}"${v === value ? ' selected' : ''}>${label}</option>`).join('');
 }
 
-function renderMap(r: Region, all: HuntArea[], shown: HuntArea[], level: number): void {
-  if (paintedRegion !== r.id) {
-    q('.mapw-viewport').style.background = paintRegionMap(q<HTMLCanvasElement>('.mapw-canvas'), r, all);
-    paintedRegion = r.id;
+function renderMap(r: Region | null, all: HuntArea[], shown: HuntArea[], level: number): void {
+  const key = r?.id ?? WORLD_ID;
+  if (paintedRegion !== key) {
+    const canvas = q<HTMLCanvasElement>('.mapw-canvas');
+    const zones = WORLD_ZONES.map((z) => ({ id: z.region.id, biome: z.region.biome, rect: z.rect }));
+    q('.mapw-viewport').style.background = r ? paintRegionMap(canvas, r, all) : paintWorldMap(canvas, zones, PATIO_POS);
+    paintedRegion = key;
     ui.selected = null;
   }
   const here = currentHuntArea();
-  q('.mapw-marks').innerHTML = shown.map((a) => marker(a, level, a.id === ui.selected, a.id === here)).join('');
+  q('.mapw-marks').innerHTML = r
+    ? shown.map((a) => marker(a, level, a.id === ui.selected, a.id === here)).join('')
+    : worldZones(level) + worldMarkers(shown, level, ui.selected, here);
   const picked = ui.selected ? areaById(ui.selected) : undefined;
   const card = q('.mapw-card');
   card.hidden = !picked;
@@ -210,12 +221,18 @@ function onClick(event: MouseEvent): void {
   const go = el('[data-travel]');
   if (go) { travelToArea(go.dataset.travel!); return; }
   const mark = el('.mapw-mark');
+  const zone = el('[data-zone]');
   if (mapView?.consumeDrag()) return;
+  if (zone && !mark) {
+    if (zone.getAttribute('aria-disabled') !== 'true') { ui.region = zone.dataset.zone!; ui.selected = null; refresh(); }
+    return;
+  }
   if (mark) {
     ui.selected = ui.selected === mark.dataset.area ? null : mark.dataset.area!;
     refresh();
     const a = ui.selected ? areaById(ui.selected) : undefined;
-    if (a) mapView?.reveal(a.pos.x, a.pos.y);
+    const at = a && (ui.region === WORLD_ID ? worldPos(a) : a.pos);
+    if (at) mapView?.reveal(at.x, at.y);
   }
 }
 
@@ -250,12 +267,12 @@ function onKey(event: KeyboardEvent): void {
   if (t.matches('[role="tab"]') && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
     event.stopPropagation();
     event.preventDefault();
-    const open = REGIONS.filter((r) => heroLevel() >= r.minLevel);
-    const at = open.findIndex((r) => r.id === ui.region);
+    const open = [WORLD_ID, ...REGIONS.filter((r) => heroLevel() >= r.minLevel).map((r) => r.id)];
+    const at = open.indexOf(ui.region ?? WORLD_ID);
     const next = open[(at + (event.key === 'ArrowRight' ? 1 : open.length - 1)) % open.length];
-    ui.region = next.id;
+    ui.region = next;
     ui.selected = null;
     refresh();
-    root?.querySelector<HTMLElement>(`[data-region="${next.id}"]`)?.focus();
+    root?.querySelector<HTMLElement>(`[data-region="${next}"]`)?.focus();
   }
 }

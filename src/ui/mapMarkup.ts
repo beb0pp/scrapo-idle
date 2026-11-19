@@ -1,6 +1,7 @@
 import { enemyIconUrls } from '../art/enemyArt';
 import type { ElementMode, SortDir, SortKey } from '../core/huntFilter';
 import type { HuntForecast } from '../core/huntForecast';
+import { WORLD_ID } from '../core/worldLayout';
 import { PILE_TABLES } from '../data/areas';
 import { ELEMENTS } from '../data/elements';
 import { ENEMY_INFO, type EnemyKind } from '../data/enemies';
@@ -18,7 +19,7 @@ export const MODE_HELP: Record<ElementMode, string> = {
   strong: 'Inimigos da área resistem (×0,5) a ataques destes tipos.',
 };
 
-const LOCK = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 4V3a2 2 0 0 1 4 0v1h1v5H2V4zm1 0h2V3a1 1 0 0 0-2 0z" fill="currentColor"/></svg>';
+export const LOCK = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 4V3a2 2 0 0 1 4 0v1h1v5H2V4zm1 0h2V3a1 1 0 0 0-2 0z" fill="currentColor"/></svg>';
 
 export function enemyIcon(kind: EnemyKind, cls = 'mapw-eico'): string {
   const url = enemyIconUrls[kind];
@@ -26,7 +27,10 @@ export function enemyIcon(kind: EnemyKind, cls = 'mapw-eico'): string {
 }
 
 export function regionTabs(current: string, heroLevel: number): string {
-  return REGIONS.map((r) => {
+  const worldOn = current === WORLD_ID;
+  const world = `<button role="tab" class="mapw-tab mapw-tab-world${worldOn ? ' is-on' : ''}" data-region="${WORLD_ID}" data-fk="tab:${WORLD_ID}" aria-selected="${worldOn}" tabindex="${worldOn ? 0 : -1}" title="Todas as regiões e áreas">`
+    + `<span>Mundo</span><small>${REGIONS.length} regiões</small></button>`;
+  return world + REGIONS.map((r) => {
     const locked = heroLevel < r.minLevel;
     const on = r.id === current;
     const tip = locked ? ` title="Exige Nv ${r.minLevel}"` : ` title="${esc(r.desc)}"`;
