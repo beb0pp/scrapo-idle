@@ -1,0 +1,55 @@
+import '@fontsource/pixelify-sans/400.css';
+import './ui/styles.css';
+import Phaser from 'phaser';
+import { BootScene } from './scenes/BootScene';
+import { ExtractionScene } from './scenes/ExtractionScene';
+import { TitleScene } from './scenes/TitleScene';
+import { WorldScene } from './scenes/WorldScene';
+import { session } from './session';
+import { closePanel, onAfkStart, panelOpen, togglePanel } from './ui/ui';
+
+const game = new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: 'game',
+  backgroundColor: '#1b1a24',
+  pixelArt: true,
+  roundPixels: true,
+  scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
+  physics: { default: 'arcade', arcade: { debug: false } },
+  // Keep the loop alive as long as the browser allows; AFK math never depends on it.
+  fps: { forceSetTimeOut: false },
+  disableContextMenu: true,
+  scene: [BootScene, TitleScene, WorldScene, ExtractionScene],
+});
+
+onAfkStart((areaId) => {
+  if (session.startAfk(areaId)) return;
+  closePanel();
+  game.scene.stop('World');
+  game.scene.start('Extraction');
+});
+
+window.addEventListener('keydown', (e) => {
+  const inWorld = game.scene.isActive('World');
+  if (e.key === 'Escape') closePanel();
+  if ((e.key === 't' || e.key === 'T') && inWorld && !e.repeat) session.toggleAuto();
+  if ((e.key === 'i' || e.key === 'I') && inWorld && document.getElementById('modal')!.hidden) togglePanel('inventory');
+  const toolIds = ['tool_wrench_old', 'tool_wrench_reinforced', 'tool_hydraulic_pry'] as const;
+  const key = Number(e.key);
+  if (inWorld && !panelOpen() && key >= 1 && key <= toolIds.length) window.dispatchEvent(new CustomEvent('scrapo:tool', { detail: toolIds[key - 1] }));
+});
+
+if (import.meta.env.DEV) {
+  Object.assign(window, {
+    __scrapo: {
+      session,
+      game,
+      warp: (mapId: 'patio' | 'yard' | 'dungeon', entry = 'default') => {
+        game.scene.stop('Title');
+        game.scene.stop('Extraction');
+        game.scene.start('World', { mapId, entry });
+      },
+      world: () => game.scene.getScene('World'),
+    },
+  });
+}

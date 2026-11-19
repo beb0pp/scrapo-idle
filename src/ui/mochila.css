@@ -1,0 +1,354 @@
+/* Mochila (inventory window). Scoped under #panel .mochila so older panel rules cannot leak in. */
+
+#panel .mochila {
+  --parch: #efe0bd;
+  --parch-hi: #f8eed6;
+  --parch-lo: #d6c095;
+  --tile: #dcc69d;
+  --tile-hi: #f4e5c2;
+  --tile-lo: #a8895a;
+  --ink-brown: #3b2a1a;
+  --line-brown: #6b4a2e;
+  --amber: #e0b33a;
+  color: var(--ink-brown);
+  gap: 8px;
+  /* Character on the left, the bag fills the right at full height; detail and extraction strip span below. */
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'char bag'
+    'detail detail'
+    'strip strip';
+}
+
+#panel .mochila .mo-char { grid-area: char; display: flex; flex-direction: column; justify-content: center; }
+#panel .mochila .mo-bag { grid-area: bag; }
+#panel .mochila .mo-detail { grid-area: detail; }
+
+#panel .mochila .extraction-strip {
+  grid-area: strip;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--ink-brown);
+  color: var(--parch-hi);
+  font-size: 13px;
+}
+
+#panel .mochila .mo-card {
+  background: var(--parch);
+  border: 2px solid #4a3220;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 2px var(--parch-hi), 0 2px 0 #2a1d12;
+  padding: 8px 10px;
+  min-height: 0;
+}
+
+/* ---------- character ---------- */
+
+#panel .mochila .mo-doll {
+  display: grid;
+  grid-template-columns: 84px 150px 84px;
+  grid-template-areas:
+    '.    head  .'
+    'tool stage acc'
+    'body stage hands'
+    '.    feet  .';
+  justify-content: center;
+  justify-items: center;
+  align-items: center;
+  gap: 2px 10px;
+}
+
+#panel .mochila .mo-at-head { grid-area: head; }
+#panel .mochila .mo-at-tool { grid-area: tool; }
+#panel .mochila .mo-at-accessory { grid-area: acc; }
+#panel .mochila .mo-at-body { grid-area: body; }
+#panel .mochila .mo-at-hands { grid-area: hands; }
+#panel .mochila .mo-at-feet { grid-area: feet; }
+
+#panel .mochila .mo-stage {
+  grid-area: stage;
+  align-self: stretch;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 140px;
+  min-height: 150px;
+  border-radius: 70px 70px 14px 14px;
+  border: 2px solid var(--line-brown);
+  background:
+    radial-gradient(ellipse 38px 7px at 50% calc(100% - 16px), rgba(40, 25, 10, 0.45) 0 98%, transparent 100%),
+    radial-gradient(circle at 50% 38%, #fbf2dc 0, #ead6ad 55%, #d6bd8b 100%);
+  box-shadow: inset 0 -10px 0 rgba(107, 74, 46, 0.18), inset 0 0 0 2px var(--parch-hi);
+  padding-bottom: 18px;
+}
+
+#panel .mochila .mo-hero {
+  width: 96px;
+  height: 128px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 0 rgba(40, 25, 10, 0.35));
+}
+
+#panel .mochila .mo-slot-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+#panel .mochila .mo-slot-wrap small {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--line-brown);
+}
+
+#panel .mochila .mo-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+#panel .mochila .mo-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border: 1px solid var(--line-brown);
+  border-radius: 10px;
+  background: var(--parch-hi);
+  font-size: 13px;
+}
+
+#panel .mochila .mo-stat b { color: #9b5a32; font-weight: normal; }
+
+/* ---------- tiles: equipment slots and bag cells share one look ---------- */
+
+#panel .mochila .mo-slot,
+#panel .mochila .mo-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 2px solid var(--ink-brown);
+  border-radius: 6px;
+  background: var(--tile);
+  box-shadow: inset 2px 2px 0 var(--tile-hi), inset -2px -2px 0 var(--tile-lo);
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+/* the sunken recess the item sits in */
+#panel .mochila .mo-slot::before,
+#panel .mochila .mo-cell::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 3px;
+  background: rgba(107, 74, 46, 0.16);
+  box-shadow: inset 1px 1px 2px rgba(40, 25, 10, 0.4);
+}
+
+#panel .mochila .mo-slot.is-full,
+#panel .mochila .mo-cell:not(.is-empty) {
+  box-shadow: inset 2px 2px 0 var(--tile-hi), inset -2px -2px 0 var(--tile-lo), inset 0 0 0 4px var(--rc, transparent);
+}
+
+#panel .mochila .mo-cell.is-empty {
+  cursor: default;
+  background: #e6d5b0;
+  border-color: #8a6f4a;
+  box-shadow: inset 2px 2px 0 #f2e5c6, inset -2px -2px 0 #c9b089;
+}
+
+#panel .mochila .mo-cell.is-empty::before {
+  background: repeating-linear-gradient(45deg, rgba(107, 74, 46, 0.07) 0 2px, transparent 2px 6px);
+}
+
+#panel .mochila .mo-slot:hover,
+#panel .mochila .mo-cell:not(.is-empty):hover {
+  transform: translateY(-1px);
+  box-shadow: inset 2px 2px 0 var(--tile-hi), inset -2px -2px 0 var(--tile-lo), inset 0 0 0 4px var(--rc, transparent), 0 0 0 2px rgba(224, 179, 58, 0.55);
+}
+
+#panel .mochila .mo-slot.is-selected,
+#panel .mochila .mo-cell.is-selected {
+  outline: 3px solid var(--amber);
+  outline-offset: 1px;
+  animation: mo-pulse 1.2s ease-in-out infinite;
+}
+
+#panel .mochila .mo-cell.is-incompatible { filter: grayscale(1); opacity: 0.4; }
+
+@keyframes mo-pulse {
+  50% { outline-color: #f6dd8a; }
+}
+
+#panel .mochila .mo-ico {
+  position: relative;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 2px 0 rgba(40, 25, 10, 0.45));
+}
+
+#panel .mochila .mo-ico.is-hint { filter: grayscale(1) opacity(0.22); }
+
+#panel .mochila .mo-gem {
+  position: absolute;
+  z-index: 2;
+  top: 4px;
+  left: 4px;
+  width: 6px;
+  height: 6px;
+  background: var(--rc);
+  border: 1px solid var(--ink-brown);
+  transform: rotate(45deg);
+}
+
+#panel .mochila .mo-qty {
+  position: absolute;
+  z-index: 2;
+  right: 4px;
+  bottom: 1px;
+  font-size: 13px;
+  color: #fff;
+  text-shadow: 1px 0 #1b1a24, -1px 0 #1b1a24, 0 1px #1b1a24, 0 -1px #1b1a24;
+}
+
+/* ---------- bag ---------- */
+
+#panel .mochila .mo-bag {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+#panel .mochila .mo-bag-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+#panel .mochila .mo-bag-head h3,
+#panel .mochila .mo-detail h3 { margin: 0; font-size: 15px; }
+
+#panel .mochila .mo-cap {
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--ink-brown);
+  color: var(--parch-hi);
+  font-size: 12px;
+}
+
+#panel .mochila .filters { display: flex; flex-wrap: wrap; gap: 4px; }
+
+#panel .mochila .filters button {
+  padding: 1px 10px;
+  border: 1px solid var(--line-brown);
+  border-radius: 10px;
+  background: var(--parch-hi);
+  color: var(--ink-brown);
+  font-size: 12px;
+  box-shadow: none;
+}
+
+#panel .mochila .filters button.active { background: var(--amber); border-color: var(--ink-brown); }
+
+#panel .mochila .mo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 64px);
+  justify-content: center;
+  align-content: start;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 6px 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #9b5a32 #d6c095;
+}
+
+#panel .mochila .mo-grid::-webkit-scrollbar { width: 9px; }
+#panel .mochila .mo-grid::-webkit-scrollbar-track { background: #d6c095; border-radius: 6px; box-shadow: inset 0 0 0 1px #a8895a; }
+#panel .mochila .mo-grid::-webkit-scrollbar-thumb { background: #9b5a32; border: 2px solid #d6c095; border-radius: 6px; }
+#panel .mochila .mo-grid::-webkit-scrollbar-thumb:hover { background: #c27a48; }
+
+/* ---------- detail ---------- */
+
+#panel .mochila .mo-detail {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 4px 10px;
+  min-height: 112px;
+}
+
+#panel .mochila .mo-detail-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 2px solid var(--ink-brown);
+  border-radius: 8px;
+  background: var(--tile);
+  box-shadow: inset 2px 2px 0 var(--tile-hi), inset -2px -2px 0 var(--tile-lo), inset 0 0 0 4px var(--rc);
+}
+
+#panel .mochila .mo-detail-icon .mo-ico { width: 48px; height: 48px; }
+
+/* A wider window so the bag shows more of what the player carries. */
+#panel[data-dock] { width: min(760px, 60vw); }
+
+@media (max-width: 1100px) {
+  #panel .mochila {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: 'char' 'bag' 'detail' 'strip';
+  }
+}
+#panel .mochila .mo-detail-body { min-width: 0; }
+#panel .mochila .mo-sub { margin: 2px 0; font-size: 12px; color: var(--line-brown); }
+#panel .mochila .mo-desc { margin: 2px 0; font-size: 13px; }
+#panel .mochila .mo-uses { margin: 2px 0; font-size: 12px; color: #2e6f74; }
+#panel .mochila .mo-muted { color: var(--line-brown); }
+
+#panel .mochila .mo-tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--rc);
+  color: #1b1a24;
+  font-size: 11px;
+}
+
+#panel .mochila .mo-cmp { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 2px 0; padding: 0; list-style: none; font-size: 12px; }
+#panel .mochila .mo-cmp .gain { color: #3f7a34; }
+#panel .mochila .mo-cmp .loss { color: #b13a2c; }
+
+#panel .mochila .mo-detail-acts { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: flex-end; }
+
+#panel .mochila .mo-detail-acts button {
+  padding: 3px 12px;
+  border: 2px solid var(--ink-brown);
+  border-radius: 6px;
+  background: var(--parch-hi);
+  color: var(--ink-brown);
+}
+
+#panel .mochila .mo-detail-acts button.primary { background: var(--amber); }
+
+@media (max-width: 700px) {
+  #panel .mochila .mo-doll { grid-template-columns: 66px 120px 66px; }
+  #panel .mochila .mo-stage { width: 120px; min-height: 132px; }
+  #panel .mochila .mo-hero { width: 72px; height: 96px; }
+}
