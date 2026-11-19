@@ -1,4 +1,4 @@
-/** XP per event. Kill XP is derived from enemy hp in game/enemies.ts (killXp). */
+/** XP per event. Kill XP is derived from enemy hp in data/enemies.ts (killXp). */
 export const XP = {
   hpPerKillXp: 3,
   crane: 250,

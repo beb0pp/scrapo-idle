@@ -277,7 +277,15 @@ export const LOOT_ROW_PX = 40;
 export const LOOT_HALF_WIDTH_PX = 110;
 const LOOT_ICON_SCALE = 2;
 
-/** Damage number popping out of a hit target. */
-export function damageNumber(scene: Phaser.Scene, at: Pt, amount: number, crit = false): void {
-  floatingText(scene, { x: at.x + Phaser.Math.Between(-3, 3), y: at.y - 6 }, String(Math.round(amount)), crit ? '#ffd45a' : '#ffffff', crit ? 10 : 8, 14, DIGIT_FONT);
+/** Damage number popping out of a hit target. `mul` is the element multiplier: ×2 adds "Eficaz!", ×0.5 adds "Resistiu". */
+export function damageNumber(scene: Phaser.Scene, at: Pt, amount: number, crit = false, mul = 1): void {
+  const p = { x: at.x + Phaser.Math.Between(-3, 3), y: at.y - 6 };
+  const style = mul > 1 ? { color: '#ff9a3c', size: 11 } : mul < 1 ? { color: '#8d8a9a', size: 7 } : { color: crit ? '#ffd45a' : '#ffffff', size: crit ? 10 : 8 };
+  floatingText(scene, p, String(Math.round(amount)), style.color, style.size, 14, DIGIT_FONT);
+  if (mul === 1) return;
+  const above = { x: p.x, y: p.y - (style.size * 2) / scene.cameras.main.zoom };
+  if (mul > 1) {
+    floatingText(scene, above, 'Eficaz!', '#ffd45a', 7, 16);
+    sparks(scene, at, 6, AMBER, 40, 220);
+  } else floatingText(scene, above, 'Resistiu', '#a9a6b4', 6, 12);
 }

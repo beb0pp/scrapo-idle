@@ -1,3 +1,4 @@
+import type { ElementId } from './elements';
 import type { ItemBag } from './items';
 
 // Ferromancia catalogue: build tree, skill tree, spells, transmutations, allies and synergies.
@@ -165,12 +166,14 @@ export interface SpellDef {
   durationMs?: number;
   effect: string;
   color: number;
+  /** Absent = neutral. */
+  element?: ElementId;
 }
 
 export const SPELLS: Record<SpellId, SpellDef> = {
   spell_ember: {
     id: 'spell_ember', name: 'Lança de Brasa', school: 'ataque', mana: 12, cost: { reagent_ember: 1 }, cooldownMs: 6000,
-    target: 'enemy', range: 150, power: 24, color: 0xf08a3a,
+    target: 'enemy', range: 150, power: 24, color: 0xf08a3a, element: 'termico',
     effect: 'Crava uma lança de brasa no inimigo mais próximo (ou sob o cursor): 24 de dano e respingo em volta.',
   },
   spell_ward: {
@@ -180,7 +183,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   },
   spell_lodestone: {
     id: 'spell_lodestone', name: 'Chamado Imantado', school: 'extracao', mana: 10, cost: { reagent_lodestone: 1 }, cooldownMs: 12000,
-    target: 'area', range: 170, power: 1, color: 0xb48ae6,
+    target: 'area', range: 170, power: 1, color: 0xb48ae6, element: 'magnetico',
     effect: 'Puxa todos os achados num raio de 170 px e a próxima pilha vasculhada rende um achado extra.',
   },
   spell_haste: {

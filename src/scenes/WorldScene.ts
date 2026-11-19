@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
-import { arcJumps, droneReady, playerStats, pulseRadius } from '../core/derived';
+import { arcJumps, droneReady, meleeElement, playerStats, pulseRadius } from '../core/derived';
+import { elementDamage } from '../core/elements';
 import { grantXp } from '../core/level';
+import type { ElementId } from '../data/elements';
 import { rollTable } from '../core/rng';
 import { addItems } from '../core/state';
 import { DECALS, TILES } from '../art/tileArt';
@@ -963,16 +965,17 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  private hitTargets(): { x: number; y: number; hit: (n: number) => void; radius: number }[] {
-    const list = this.enemies.filter((e) => e.alive).map((e) => ({ x: e.x, y: e.y, radius: 8, hit: (n: number) => this.damageEnemy(e, n) }));
+  private hitTargets(): { x: number; y: number; hit: (n: number, el?: ElementId | null) => void; radius: number }[] {
+    const list = this.enemies.filter((e) => e.alive).map((e) => ({ x: e.x, y: e.y, radius: 8, hit: (n: number, el?: ElementId | null) => this.damageEnemy(e, n, el) }));
     const c = this.crane;
     if (c?.alive) list.push({ x: c.sprite.x, y: c.sprite.y + 10, radius: 20, hit: (n: number) => this.damageCrane(n) });
     return list;
   }
 
-  private damageEnemy(e: Enemy, n: number): void {
+  private damageEnemy(e: Enemy, base: number, el: ElementId | null = null): void {
     if (!e.alive) return;
-    vfx.damageNumber(this, { x: e.x, y: e.y - 6 }, n, n >= 14);
+    const { amount: n, mul } = elementDamage(base, el, e.element);
+    vfx.damageNumber(this, { x: e.x, y: e.y - 6 }, n, n >= 14, mul);
     if (e.damage(n, this.player.x, this.player.y)) {
       session.mutate((s) => {
         s.stats.kills++;
@@ -1027,7 +1030,8 @@ export class WorldScene extends Phaser.Scene {
     this.time.delayedCall(50, () => {
       vfx.slash(this, { x: cx, y: cy }, Math.atan2(this.facing.y, this.facing.x));
       const dmg = Math.max(1, playerStats(session.state).combate);
-      for (const t of this.hitTargets()) if (Phaser.Math.Distance.Between(hx, hy, t.x, t.y) < 12 + t.radius) t.hit(dmg);
+      const el = meleeElement(session.state);
+      for (const t of this.hitTargets()) if (Phaser.Math.Distance.Between(hx, hy, t.x, t.y) < 12 + t.radius) t.hit(dmg, el);
     });
   }
 
@@ -1042,7 +1046,7 @@ export class WorldScene extends Phaser.Scene {
     vfx.pulse(this, { x: this.feetX, y: this.feetY - 6 }, r);
     for (const e of this.enemies) {
       if (!e.alive || Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y) > r) continue;
-      this.damageEnemy(e, 6);
+      this.damageEnemy(e, 6, 'magnetico');
       e.pull(this.player.x, this.player.y, 900);
     }
     const c = this.crane;
@@ -1096,7 +1100,7 @@ export class WorldScene extends Phaser.Scene {
       vfx.overdrive(this, d, [], 110);
       for (const e of this.enemies) {
         if (!e.alive || Phaser.Math.Distance.Between(d.x, d.y, e.x, e.y) > 110) continue;
-        this.damageEnemy(e, 8);
+        this.damageEnemy(e, 8, 'magnetico');
         e.pull(d.x, d.y + 14, 1300);
       }
       this.attractPickups(this.feetX, this.feetY, 400);
@@ -1196,7 +1200,7 @@ export class WorldScene extends Phaser.Scene {
       const c = this.crane;
       if (best) {
         vfx.droneZap(this, d, best);
-        this.damageEnemy(best, Math.round(5 * this.ferro.mods.droneDamageMul));
+        this.damageEnemy(best, Math.round(5 * this.ferro.mods.droneDamageMul), 'eletrico');
       } else if (c?.active && Phaser.Math.Distance.Between(d.x, d.y, c.sprite.x, c.sprite.y) < 110) {
         vfx.droneZap(this, d, c.sprite);
         this.damageCrane(Math.round(5 * this.ferro.mods.droneDamageMul));

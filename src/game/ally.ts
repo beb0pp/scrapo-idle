@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { ElementId } from '../data/elements';
 import type { FormationSlot } from '../data/ferromancy';
 import { runeBolt, stomp, type Pt } from './spellfx';
 
@@ -9,7 +10,7 @@ export interface AllyTarget {
   readonly x: number;
   readonly y: number;
   readonly radius: number;
-  hit(damage: number): void;
+  hit(damage: number, element?: ElementId | null): void;
 }
 
 export interface AllyApi {
