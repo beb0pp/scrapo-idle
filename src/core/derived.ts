@@ -1,5 +1,6 @@
 import type { GameState } from './state';
 import { ITEMS, type ItemId } from '../data/items';
+import { ferroMods } from './progression';
 
 export const BASE_DRONE_CAPACITY = 10;
 export const PULSE_RADIUS = 72;
@@ -11,11 +12,16 @@ export function playerStats(s: GameState): PlayerStats {
   for (const id of Object.values(s.equipped).filter((id): id is ItemId => id !== null)) {
     for (const [key, value] of Object.entries(ITEMS[id].stats ?? {})) total[key as keyof PlayerStats] += value ?? 0;
   }
+  const mods = ferroMods(s);
+  total.combate += mods.combate;
+  total.extracao += mods.extracao;
+  total.defesa += mods.defesa;
+  total.sorte += mods.sorte;
   return total;
 }
 
 export function droneCapacity(s: GameState): number {
-  return BASE_DRONE_CAPACITY + (s.equipped.upgrade === 'mod_cargo' ? 6 : 0);
+  return BASE_DRONE_CAPACITY + (s.equipped.upgrade === 'mod_cargo' ? 6 : 0) + ferroMods(s).droneCapacity;
 }
 
 export function afkRareFactor(s: GameState): number {

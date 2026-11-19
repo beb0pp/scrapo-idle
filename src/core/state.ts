@@ -1,7 +1,8 @@
 import type { EquipSlot, ItemBag, ItemId } from '../data/items';
 import type { AfkAreaId } from '../data/areas';
+import type { AllyId, BuildNodeId, DiscoveryId, MemberId, SkillNodeId, SpellId } from '../data/ferromancy';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const BAG_CAPACITY = 30;
 
 export type FlagId =
@@ -26,6 +27,22 @@ export interface AfkSession {
   endReason: AfkEndReason | null;
 }
 
+export type SpellLoadout = [SpellId | null, SpellId | null, SpellId | null];
+
+/** Ferromancia progress: build tree, skill tree, spell loadout, exploration finds and party. */
+export interface FerroState {
+  built: BuildNodeId[];
+  learned: SkillNodeId[];
+  loadout: SpellLoadout;
+  discovered: DiscoveryId[];
+  recruited: AllyId[];
+  formation: { front: MemberId | null; back: MemberId | null };
+}
+
+export function newFerro(): FerroState {
+  return { built: [], learned: [], loadout: [null, null, null], discovered: [], recruited: [], formation: { front: 'ferrugem', back: null } };
+}
+
 export interface GameState {
   version: typeof SAVE_VERSION;
   currency: number;
@@ -38,6 +55,7 @@ export interface GameState {
   /** Last time the open tab proved it was alive; caps AFK sessions after a tab close. */
   lastHeartbeat: number;
   stats: { searches: number; kills: number; extractions: number };
+  ferro: FerroState;
 }
 
 export function newGame(now: number): GameState {
@@ -51,6 +69,7 @@ export function newGame(now: number): GameState {
     claimedSessions: [],
     lastHeartbeat: now,
     stats: { searches: 0, kills: 0, extractions: 0 },
+    ferro: newFerro(),
   };
 }
 

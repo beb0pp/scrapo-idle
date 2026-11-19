@@ -225,7 +225,8 @@ const wrench = (steel: Ramp, grip: Ramp, wear: string) => icon((g) => {
   g.dot(wear, [8, 7], [10, 6], [3, 13]);
 });
 
-const ICON_ART: Record<ItemId, (c: CanvasRenderingContext2D) => void> = {
+/** Items without art here (Ferromancia reagents) get their icons from art/ferroArt.ts. */
+const ICON_ART: Partial<Record<ItemId, (c: CanvasRenderingContext2D) => void>> = {
   scrap: icon((g) => {
     g.blob(RUST, inSeg(9, 3, 13, 8, 1.3));
     g.blob(SLATE, any(inRect(2, 7, 8, 5), inRect(4, 5, 4, 2), inSeg(9, 9, 11, 12, 1)));
@@ -426,7 +427,7 @@ export function buildSprites(scene: Phaser.Scene): void {
     disc(c, f ? '#f6b24a55' : '#f6b24a33', ox + 8, 8, 7);
     c.save();
     c.translate(ox, 0);
-    ICON_ART.relic_crane_coil(c);
+    ICON_ART.relic_crane_coil!(c);
     c.restore();
   });
 
@@ -467,7 +468,9 @@ export function buildSprites(scene: Phaser.Scene): void {
   });
 
   for (const id of ITEM_IDS) {
-    canvasTex(scene, `icon_${id}`, 16, 16, 1, (c) => ICON_ART[id](c));
+    const draw = ICON_ART[id];
+    if (!draw) continue;
+    canvasTex(scene, `icon_${id}`, 16, 16, 1, (c) => draw(c));
     iconUrls[id] = (scene.textures.get(`icon_${id}`).getSourceImage() as HTMLCanvasElement).toDataURL();
   }
   // the drone icon is baked with its sprite by tools/bake-drone.py

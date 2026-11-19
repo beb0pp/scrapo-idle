@@ -14,6 +14,7 @@ export const ITEM_IDS = [
   'relic_capacitor',
   'tool_wrench_old', 'tool_wrench_reinforced', 'tool_hydraulic_pry',
   'head_scrap_cap', 'body_work_jacket', 'hands_grip_gloves', 'feet_rail_boots', 'accessory_lucky_bolt',
+  'ether_shard', 'reagent_ember', 'reagent_ward', 'reagent_lodestone',
 ] as const;
 
 export type ItemId = (typeof ITEM_IDS)[number];
@@ -34,10 +35,11 @@ const ITEM_RARITIES: Record<ItemId, Rarity> = {
   tool_wrench_reinforced: 'incomum', head_scrap_cap: 'incomum', body_work_jacket: 'incomum',
   hands_grip_gloves: 'incomum', feet_rail_boots: 'incomum', tool_hydraulic_pry: 'raro',
   accessory_lucky_bolt: 'raro', relic_capacitor: 'epico', relic_crane_coil: 'reliquia',
+  ether_shard: 'epico', reagent_ember: 'incomum', reagent_ward: 'incomum', reagent_lodestone: 'raro',
 };
 
 export function rarityOf(id: ItemId): Rarity { return ITEM_RARITIES[id]; }
-export type ItemKind = 'scrap' | 'component' | 'part' | 'module' | 'upgrade' | 'drone' | 'relic' | 'tool' | 'equipment';
+export type ItemKind = 'scrap' | 'component' | 'part' | 'module' | 'upgrade' | 'drone' | 'relic' | 'tool' | 'equipment' | 'reagent';
 export type EquipSlot = 'drone' | 'module' | 'upgrade' | 'relic' | 'tool' | 'head' | 'body' | 'hands' | 'feet' | 'accessory';
 export type ItemBag = Partial<Record<ItemId, number>>;
 
@@ -75,6 +77,10 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   hands_grip_gloves: { id: 'hands_grip_gloves', name: 'Luvas de Aderência', kind: 'equipment', slot: 'hands', sell: 9, desc: 'Seguram ferramentas e cabos.', stats: { extracao: 1, defesa: 1 } },
   feet_rail_boots: { id: 'feet_rail_boots', name: 'Botas de Trilho', kind: 'equipment', slot: 'feet', sell: 10, desc: 'Sola grossa sobre sucata.', stats: { defesa: 2 } },
   accessory_lucky_bolt: { id: 'accessory_lucky_bolt', name: 'Parafuso da Sorte', kind: 'equipment', slot: 'accessory', sell: 15, desc: 'Um parafuso que sempre cai de pé.', stats: { sorte: 2 } },
+  ether_shard: { id: 'ether_shard', name: 'Fragmento de Éter', kind: 'reagent', sell: 14, desc: 'Energia cristalizada da colônia. Base da Ferromancia.' },
+  reagent_ember: { id: 'reagent_ember', name: 'Pó de Brasa', kind: 'reagent', sell: 3, desc: 'Sucata calcinada com cobre. Alimenta a Lança de Brasa.' },
+  reagent_ward: { id: 'reagent_ward', name: 'Sal de Ferro', kind: 'reagent', sell: 3, desc: 'Cristais de ferro que endurecem ao toque rúnico. Alimenta a Égide.' },
+  reagent_lodestone: { id: 'reagent_lodestone', name: 'Limalha Imantada', kind: 'reagent', sell: 5, desc: 'Limalha carregada de Éter. Alimenta o Chamado Imantado.' },
 };
 
 export const KIND_LABEL: Record<ItemKind, string> = {
@@ -87,4 +93,5 @@ export const KIND_LABEL: Record<ItemKind, string> = {
   relic: 'Relíquia',
   tool: 'Ferramenta',
   equipment: 'Equipamento',
+  reagent: 'Reagente',
 };
