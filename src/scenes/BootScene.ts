@@ -12,6 +12,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('tiles', 'tiles/scrapo-tiles.png');
     this.load.spritesheet('hero', 'sprites/hero.png', { frameWidth: 64, frameHeight: 72 });
     this.load.spritesheet('robodog', 'sprites/dog.png', { frameWidth: 32, frameHeight: 34 });
+    this.load.spritesheet('drone', 'sprites/drone.png', { frameWidth: 24, frameHeight: 22 });
+    this.load.image('drone-icon', 'sprites/drone-icon.png');
     for (const id of ['patio', 'yard', 'dungeon']) this.load.tilemapTiledJSON(id, `maps/${id}.json`);
   }
 

@@ -251,7 +251,9 @@ export class WorldScene extends Phaser.Scene {
     if (this.mapId === 'patio') session.hp = session.maxHp;
     showHud(true);
     showAreaBanner(this.areaName, AREA_SUBTITLE[this.mapId]);
+    const offState = session.onChange(() => this.syncDrone());
     this.events.once('shutdown', () => {
+      offState();
       onSkillClick(() => {});
       closePanel();
     });
@@ -416,9 +418,26 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  /** Builds, rebuilds or removes the drone when the saved state changes (e.g. assembled at the workshop). */
+  private syncDrone(): void {
+    const ready = droneReady(session.state);
+    const wantsAura = ready && session.state.equipped.module === 'mod_magnet';
+    if (this.drone && ready && wantsAura === !!this.droneAura) return;
+    const fresh = ready && !this.drone;
+    this.drone?.destroy();
+    this.droneAura?.destroy();
+    this.drone = null;
+    this.droneAura = null;
+    this.spawnDrone();
+    if (fresh && this.drone) {
+      vfx.callout(this, { x: this.player.x, y: this.player.y - 20 }, 'DRONE ONLINE!');
+      vfx.droneField(this, this.drone, 18);
+    }
+  }
+
   private spawnDrone(): void {
     if (!droneReady(session.state)) return;
-    this.drone = this.add.sprite(this.player.x - 14, this.player.y - 14, 'drone', 0).play('drone-fly').setDepth(5500);
+    this.drone = this.add.sprite(this.player.x - 16, this.player.y - 18, 'drone', 0).play('drone-fly').setDepth(5500);
     if (session.state.equipped.module === 'mod_magnet') {
       this.droneAura = this.add.circle(this.drone.x, this.drone.y, 9, 0x5fd0d8, 0.18).setStrokeStyle(1, 0x5fd0d8, 0.6).setDepth(5499);
     }

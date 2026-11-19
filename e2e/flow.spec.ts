@@ -41,6 +41,9 @@ test('fresh save: explore → salvage → build drone → AFK across tab close �
   await page.locator('[data-act="craft:rcp_mod_claw"]').click();
   await page.locator('[data-act="craft:rcp_drone_spark"]').click();
   await expect.poll(async () => (await state(page)).drone).toBeTruthy();
+  // the drone takes off right away, without a map change
+  await expect.poll(() => page.evaluate(() => !!(window as any).__scrapo.world().drone?.active)).toBe(true);
+  await expect(page.locator('#panel [data-act="equip:mod_claw"]')).toHaveCount(0);
   await tap(page, 'Escape');
   await focusGame(page);
 
