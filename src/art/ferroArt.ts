@@ -75,7 +75,18 @@ function vial(c: Ctx, liquid: string, hi: string, dark: string): void {
   r(c, '#cfd6e2', 5, 6, 1, 3);
 }
 
-const ICONS: Record<'ether_shard' | 'reagent_ember' | 'reagent_ward' | 'reagent_lodestone', (c: Ctx) => void> = {
+function etherCrystal(c: Ctx): void {
+  r(c, K, 5, 0, 6, 16); r(c, K, 3, 3, 10, 11); r(c, K, 2, 6, 12, 5);
+  r(c, ETHER_DK, 4, 4, 8, 9); r(c, ETHER_DK, 6, 1, 4, 14);
+  r(c, ETHER, 6, 2, 4, 11); r(c, ETHER, 4, 6, 3, 4);
+  r(c, CYAN, 9, 4, 2, 7); r(c, CYAN_HI, 9, 5, 1, 3);
+  r(c, ETHER_HI, 6, 2, 1, 7); r(c, ETHER_HI, 4, 7, 1, 2);
+  px(c, WHITE, [[6, 3], [1, 2], [14, 4], [13, 13], [2, 13]]);
+}
+
+const ICONS: Record<'ether_shard' | 'reagent_ember' | 'reagent_ward' | 'reagent_lodestone' | 'ether_crystal' | 'mana_flask', (c: Ctx) => void> = {
+  ether_crystal: etherCrystal,
+  mana_flask: (c) => { vial(c, '#6fa8ff', CYAN_HI, ETHER_DK); px(c, ETHER_HI, [[6, 12], [9, 11], [8, 13]]); },
   ether_shard: etherShard,
   reagent_ember: (c) => { vial(c, EMBER, EMBER_HI, EMBER_DK); px(c, EMBER_HI, [[9, 12], [7, 13]]); },
   reagent_ward: (c) => {

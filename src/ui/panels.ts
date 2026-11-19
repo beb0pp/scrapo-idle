@@ -11,6 +11,7 @@ import { heroPortraitUrl } from '../art/sprites';
 import { $, esc, icon } from './shared';
 import { ferroPanelView, handleFerroAction } from './ferroPanel';
 import { applyDock, cycleDock, dockMode, DOCK_LABEL, enableDockDrag } from './dock';
+import { useManaItem } from '../game/ferroController';
 import './mochila.css';
 
 export type PanelKind = 'inventory' | 'workshop' | 'vendor' | 'terminal' | 'settings' | 'ferro';
@@ -67,6 +68,7 @@ function handlePanelClick(event: MouseEvent): void {
   if (action === 'slot') { slotFilter = value as EquipSlot; selected = session.state.equipped[slotFilter]; renderPanel(); }
   if (action === 'equip') session.run((state) => equip(state, value as ItemId));
   if (action === 'unequip') session.run((state) => unequip(state, value as EquipSlot));
+  if (action === 'use') useManaItem(value as 'ether_crystal' | 'mana_flask');
   if (action === 'dismantle') session.run((state) => dismantle(state, value as ItemId));
   if (action === 'craft') session.run((state) => craft(state, value));
   if (action === 'buy') session.run((state) => buy(state, value));
@@ -182,7 +184,7 @@ function detail(state: GameState, item: typeof ITEMS[ItemId]): string {
       <p class="mo-desc">${esc(item.desc)}</p>
       ${comparison}${uses}
     </div>
-    <div class="mo-detail-acts">${equipBtn}${unequipBtn}${dismantleBtn}</div>`;
+    <div class="mo-detail-acts">${item.kind === 'consumable' ? `<button class="primary" data-act="use:${item.id}">✦ Usar</button>` : ''}${equipBtn}${unequipBtn}${dismantleBtn}</div>`;
 }
 
 function ownStats(item: typeof ITEMS[ItemId]): string {

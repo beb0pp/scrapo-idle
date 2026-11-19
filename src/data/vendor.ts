@@ -18,4 +18,5 @@ export const VENDOR_OFFERS: VendorOffer[] = [
   { id: 'offer_bp_cargo', name: 'Projeto: Compartimento de Carga', price: 40, grantsFlag: 'bp_cargo', desc: 'Ensina a receita de +6 de carga para o drone.' },
   { id: 'offer_cable', name: 'Cabo de Cobre', price: 14, item: 'cable', desc: 'Para quem não quer cavar.' },
   { id: 'offer_servo', name: 'Servomotor', price: 24, item: 'servo', desc: 'Recondicionado. Garantia de três dias.' },
+  { id: 'offer_mana_flask', name: 'Frasco de Éter', price: 15, item: 'mana_flask', desc: 'Recupera 30 de mana. Cheira a ozônio.' },
 ];

@@ -169,6 +169,9 @@ kbd { font: inherit; color: var(--amber); background: var(--panel-2); border: 2p
 .fe-synergy.is-active { border-color: var(--ether); box-shadow: 0 0 0 1px var(--ether-dk), 0 0 12px rgba(180, 138, 230, 0.3); }
 .fe-synergy.is-active .fe-badge { color: var(--ether); }
 
+.fe-sstat.fe-mana { color: #8fb8ff; }
+.fe-sstat.fe-reforco small { color: #ffd27a; font-size: 9px; }
+
 /* HUD spellbar */
 .spellbar { position: absolute; bottom: 66px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
 #hud:has(#spellbar) #prompt { bottom: 124px; }
@@ -176,11 +179,24 @@ kbd { font: inherit; color: var(--amber); background: var(--panel-2); border: 2p
 .spell-slot b { position: absolute; top: 1px; left: 4px; color: #b48ae6; font-size: 12px; }
 .spell-slot span { font-size: 9px; line-height: 1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spell-slot .spell-ico { width: 20px; height: 20px; image-rendering: pixelated; color: #b48ae6; display: grid; place-items: center; }
-.spell-qty { position: absolute; top: 1px; right: 3px; display: inline-flex; align-items: center; gap: 1px; font-style: normal; font-size: 10px; color: #5fd0d8; }
+.spell-mana { position: absolute; top: 1px; right: 3px; font-style: normal; font-size: 10px; color: #8fb8ff; }
+.spell-boost { position: absolute; top: 14px; right: 3px; display: inline-flex; align-items: center; font-style: normal; font-size: 9px; color: #ffd27a; text-shadow: 0 0 4px rgba(255, 210, 122, 0.8); }
 .spell-reagent { width: 10px; height: 10px; image-rendering: pixelated; }
 .spell-slot .cd { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(0, 0, 0, 0.6); pointer-events: none; }
 .spell-slot.is-empty { border-style: dashed; color: var(--muted); }
-.spell-slot.is-dry .spell-qty { color: var(--red); }
+.spell-slot.is-low .spell-ico, .spell-slot.is-low span { opacity: 0.45; filter: grayscale(0.7); }
+.spell-slot.is-low .spell-mana { color: var(--red); }
+
+/* HUD vitals: mana under HP, level badge with a thin XP bar */
+.hud-top > .vitals { display: flex; flex-direction: column; gap: 3px; background: transparent; border: 0; padding: 0; }
+.mana { display: flex; gap: 6px; align-items: center; margin-top: 3px; }
+.mana-gem { width: 28px; height: 22px; display: grid; place-items: center; color: #e8d8ff; font-size: 15px; line-height: 1; background: #3b2f5c; border: 3px solid #1b1a24; box-shadow: inset 0 0 0 2px #b48ae6; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); text-shadow: 0 0 4px #6fa8ff; }
+.mana .mana-bar { width: 132px; height: 14px; padding: 2px 3px; background: #1d2036; border: 3px solid #1b1a24; box-shadow: inset 0 0 0 2px #8f6fd0; overflow: hidden; }
+.mana .mana-bar i { display: block; height: 100%; background: linear-gradient(to bottom, #9cc4ff 0 24%, #6f8fff 25% 70%, #8a5fe0 71% 100%); border-right: 2px solid #3b2f8c; transition: width 0.1s linear; }
+#mana-num { font-size: 13px; color: #c8d8ff; min-width: 48px; text-shadow: 1px 1px #1b1a24; }
+.lvl { font-size: 13px; color: #1b1a24; background: #ffd27a; border: 2px solid #1b1a24; box-shadow: inset 0 0 0 1px #fff2b0; padding: 0 6px; line-height: 18px; }
+.mana .xp-bar { width: 56px; height: 8px; padding: 1px; background: #1d2036; border: 2px solid #1b1a24; overflow: hidden; }
+.mana .xp-bar i { display: block; height: 100%; background: #ffd27a; }
 .spell-slot.is-flash { animation: spell-flash 340ms ease-out; }
 .ferro-btn { width: auto; min-width: 86px; border-color: #b48ae6; }
 .ferro-btn span { font-size: 11px; }
@@ -208,3 +224,5 @@ kbd { font: inherit; color: var(--amber); background: var(--panel-2); border: 2p
   .fe-bslots { gap: 8px; }
   .fe-bslot > button:first-child { width: 64px; height: 64px; }
 }
+.hud-top > .vitals { background: transparent; border: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.hud-top:has(.vitals) ~ .objective { top: 80px; }

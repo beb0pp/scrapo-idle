@@ -23,6 +23,8 @@ const node = (page: Page, id: string) => page.locator(`[data-node="${id}"]`);
 const inv = (page: Page, id: string) => readState<number>(page, `s.inventory.${id} ?? 0`);
 const feetNear = async (page: Page, pt: { x: number; y: number }, dx = 40) => teleportFeet(page, pt.x + dx, pt.y);
 const ferroProp = <T>(page: Page, prop: string) => page.evaluate((p) => (window as any).__scrapo.ferro()[p] as T, prop);
+const mana = (page: Page) => page.evaluate(() => (window as any).__scrapo.ferro().mana.value as number);
+const setMana = (page: Page, v: number) => page.evaluate((n) => { (window as any).__scrapo.ferro().mana.value = n; }, v);
 
 test.beforeAll(() => mkdirSync(SHOTS, { recursive: true }));
 
@@ -96,7 +98,7 @@ test('b. construir, aprender, transmutar e equipar pela UI, sem cobrança dupla'
 });
 
 test('c. conjurar manual: custo, cooldown e capturas', async ({ page }) => {
-  await seedSave(page, { inventory: { scrap: 5, ...REAGENTS }, ferro: MAGE });
+  await seedSave(page, { inventory: { scrap: 5, ...REAGENTS }, ferro: MAGE, stats: { kills: 30 } });
   await enterWorld(page, 'yard');
   const enemy = await firstEnemy(page);
   await feetNear(page, enemy, 40);
@@ -109,9 +111,14 @@ test('c. conjurar manual: custo, cooldown e capturas', async ({ page }) => {
   };
 
   const hp0 = enemy.hp;
+  await expect.poll(() => mana(page), { message: 'level 4 hero starts with 45 mana' }).toBeGreaterThanOrEqual(45);
+  const m0 = await mana(page);
   await press(page, 'z');
+  const drop = m0 - await mana(page);
+  expect(drop, 'Lança de Brasa costs 12 mana').toBeLessThanOrEqual(12);
+  expect(drop).toBeGreaterThan(12 - 3);
   await shot('ember');
-  expect(await inv(page, 'reagent_ember')).toBe(4);
+  expect(await inv(page, 'reagent_ember'), 'reforço consumes one reagent').toBe(4);
   await expect.poll(() => enemyHp(page, enemy.index), { timeout: 3000, message: 'impact lands after prep+circle+travel phases' }).toBeLessThan(hp0);
   await press(page, 'z');
   await page.waitForTimeout(200);
@@ -129,7 +136,7 @@ test('c. conjurar manual: custo, cooldown e capturas', async ({ page }) => {
 });
 
 test('d. conjurar no Auto: Égide com vida baixa e Lança em alcance', async ({ page }) => {
-  await seedSave(page, { inventory: { scrap: 5, ...REAGENTS }, ferro: MAGE });
+  await seedSave(page, { inventory: { scrap: 5, ...REAGENTS }, ferro: MAGE, stats: { kills: 30 } });
   await enterWorld(page, 'yard');
   const enemy = await firstEnemy(page);
   await feetNear(page, enemy, 30);
@@ -231,6 +238,13 @@ test('g. regressões: drone, mochila, mercado e cooldown no HUD', async ({ page 
   expect(await inv(page, 'reagent_ember')).toBe(4);
   await page.keyboard.press('Escape');
 
+  await setMana(page, 0);
+  await press(page, 'x');
+  await page.waitForTimeout(150);
+  expect(await inv(page, 'reagent_ward'), 'cast refused on low mana').toBe(5);
+  expect(await page.evaluate(() => (window as any).__scrapo.ferro().cds.spell_ward ?? null)).toBeNull();
+  await expect(page.locator('#spellbar [data-spell-slot="1"]')).toHaveClass(/is-low/);
+  await setMana(page, 100);
   await press(page, 'x');
   await expect.poll(() => page.locator('#spellbar [data-spell-slot="1"] .cd').evaluate((el) => parseFloat((el as HTMLElement).style.height || '0')), { timeout: 3000 }).toBeGreaterThan(0);
   await expect(page.locator('#spellbar [data-spell-slot="1"]')).toHaveClass(/is-cooling/);
