@@ -236,15 +236,35 @@ function slotLabel(slot: EquipSlot): string {
 
 function workshop(state: GameState): string {
   const modules = (['mod_claw', 'mod_magnet'] as ItemId[]).filter((id) => countOf(state, id));
-  const drone = state.equipped.drone ? `<div class="drone-box">${icon('drone_spark', 'ico big')}<div><b>Drone Faísca</b><p>Módulo: ${state.equipped.module ? esc(ITEMS[state.equipped.module].name) : 'nenhum'} · Carga ${droneCapacity(state)} · Raros ×${afkRareFactor(state)}</p><p>${state.equipped.module ? esc(ITEMS[state.equipped.module].desc) : 'Sem módulo o drone não extrai.'}</p></div><div class="acts">${modules.filter((id) => id !== state.equipped.module).map((id) => `<button data-act="equip:${id}">Instalar ${esc(ITEMS[id].name)}</button>`).join('')}${countOf(state, 'mod_cargo') ? '<button data-act="equip:mod_cargo">Instalar Compartimento</button>' : ''}</div></div>` : `<div class="drone-box broken">${icon('drone_chassis', 'ico big')}<p><b>Drone quebrado</b><br>Receita: chassi + núcleo + módulo + 6 sucatas.</p></div>`;
-  return `${drone}<div class="recipes">${RECIPES.map((recipe) => recipeHtml(state, recipe)).join('')}</div>`;
+  const mod = state.equipped.module;
+  const installs = `${modules.filter((id) => id !== mod).map((id) => `<button data-act="equip:${id}">Instalar ${esc(ITEMS[id].name)}</button>`).join('')}${countOf(state, 'mod_cargo') ? '<button data-act="equip:mod_cargo">Instalar Compartimento</button>' : ''}`;
+  const stat = (label: string, value: string) => `<span class="d-stat"><small>${label}</small>${value}</span>`;
+  const drone = state.equipped.drone
+    ? `<div class="drone-box"><div class="r-head">${icon('drone_spark', 'ico big')}<div class="grow"><b>Drone Faísca</b><span class="r-state">Em serviço</span></div></div><div class="d-stats">${stat('Módulo', mod ? esc(ITEMS[mod].name) : 'nenhum')}${stat('Carga', String(droneCapacity(state)))}${stat('Raros', `×${afkRareFactor(state)}`)}</div><p class="r-effect">${mod ? esc(ITEMS[mod].desc) : 'Sem módulo o drone não extrai.'}</p>${installs ? `<div class="acts">${installs}</div>` : ''}</div>`
+    : `<div class="drone-box broken"><div class="r-head">${icon('drone_chassis', 'ico big')}<div class="grow"><b>Drone quebrado</b><span class="r-state">Monte o Drone Faísca abaixo</span></div></div></div>`;
+  const order: Record<RecipeState, number> = { ready: 0, missing: 1, locked: 2, built: 3 };
+  const cards = RECIPES.map((recipe) => ({ recipe, kind: recipeState(state, recipe) })).sort((a, b) => order[a.kind] - order[b.kind]);
+  return `${drone}<div class="recipes">${cards.map(({ recipe, kind }) => recipeHtml(state, recipe, kind)).join('')}</div>`;
 }
 
-function recipeHtml(state: GameState, recipe: typeof RECIPES[number]): string {
-  const missing = missingFor(state, recipe); const known = recipeKnown(state, recipe); const built = recipe.equipsOutput && state.equipped.drone; const ready = known && !Object.keys(missing).length && !built;
-  const inputs = (Object.entries(recipe.inputs) as [ItemId, number][]).map(([id, qty]) => `<span class="need ${countOf(state, id) >= qty ? 'ok' : 'lack'}">${icon(id)}${esc(ITEMS[id].name)} ${countOf(state, id)}/${qty}</span>`).join('');
-  const status = !known ? 'Projeto necessário (comerciante).' : built ? 'Já montado.' : !ready ? `Falta: ${(Object.entries(missing) as [ItemId, number][]).map(([id, qty]) => `${qty} ${ITEMS[id].name}`).join(', ')}` : 'Pronto para montar.';
-  return `<div class="recipe"><div class="r-head">${icon(recipe.output, 'ico big')}<b>${esc(recipe.name)}</b><button data-act="craft:${recipe.id}" ${ready ? '' : 'disabled'}>Montar</button></div><div class="inputs">${inputs}</div><div class="desc">${esc(recipe.effect)}</div><div class="status">${esc(status)}</div></div>`;
+type RecipeState = 'ready' | 'missing' | 'locked' | 'built';
+function recipeState(state: GameState, recipe: typeof RECIPES[number]): RecipeState {
+  if (recipe.equipsOutput && state.equipped.drone) return 'built';
+  if (!recipeKnown(state, recipe)) return 'locked';
+  return Object.keys(missingFor(state, recipe)).length ? 'missing' : 'ready';
+}
+
+function recipeHtml(state: GameState, recipe: typeof RECIPES[number], kind: RecipeState): string {
+  const missing = missingFor(state, recipe);
+  const lacking = (Object.entries(missing) as [ItemId, number][]).map(([id, qty]) => `${qty} ${ITEMS[id].name}`).join(', ');
+  const status: Record<RecipeState, string> = { ready: 'Pronto para montar', missing: `Falta: ${lacking}`, locked: 'Precisa do projeto: compre no Mercado', built: 'Já montado' };
+  const needs = (Object.entries(recipe.inputs) as [ItemId, number][]).map(([id, qty]) => {
+    const have = countOf(state, id);
+    return `<li class="${have >= qty ? 'ok' : 'lack'}">${icon(id)}<span class="n-name">${esc(ITEMS[id].name)}</span><span class="n-qty">×${qty}</span><span class="n-have">tem ${have}</span></li>`;
+  }).join('');
+  const button = kind === 'built' ? '' : `<button data-act="craft:${recipe.id}" ${kind === 'ready' ? '' : 'disabled'}>Montar</button>`;
+  const body = kind === 'built' ? '' : `<div class="r-label">Materiais</div><ul class="needs">${needs}</ul>`;
+  return `<div class="recipe ${kind}"><div class="r-head">${icon(recipe.output, 'ico big')}<div class="grow"><b>${esc(recipe.name)}</b><span class="r-state">${esc(status[kind])}</span></div>${button}</div><p class="r-effect">${esc(recipe.effect)}</p>${body}</div>`;
 }
 
 function vendor(state: GameState): string {
