@@ -41,9 +41,30 @@ test('F na Oficina Restaurada abre a árvore de Construção', async ({ page }) 
   await expect(page.locator('#panel .ferro[data-tab="build"]')).toBeVisible();
 });
 
-test('clicar na Bancada de Módulos leva o herói até ela e abre a Oficina', async ({ page }) => {
-  const bench = await building(page, 'Bancada de Módulos');
-  const at = await toScreen(page, { x: bench.x, y: bench.y - 4 });
+/** Live bench overlays by texture key, plus how many interactables the scene holds. */
+const benchState = (page: Page): Promise<{ overlays: string[]; uses: number; labels: string[] }> =>
+  page.evaluate(() => {
+    const w = (window as any).__scrapo.world();
+    const overlays = w.children.list.filter((o: any) => o.active && o.texture?.key?.startsWith('bench_up_')).map((o: any) => o.texture.key).sort();
+    return { overlays, uses: w.interactables.length, labels: w.interactables.map((i: any) => i.label()).filter(Boolean) };
+  });
+
+test('melhorias da bancada aparecem nela, sem criar construção separada', async ({ page }) => {
+  const all = await benchState(page);
+  expect(all.overlays).toEqual(['bench_up_drone_pad', 'bench_up_pegboard', 'bench_up_servo_arm', 'bench_up_vise']);
+  for (const name of ['Bancada de Ferramentas', 'Bancada de Módulos']) expect(all.labels).not.toContain(`F —${name}`);
+
+  await page.evaluate(() => (window as any).__scrapo.session.mutate((s: any) => { s.ferro.built = s.ferro.built.filter((id: string) => id !== 'b_bench_modules'); }));
+  await expect.poll(async () => (await benchState(page)).overlays).not.toContain('bench_up_vise');
+
+  await page.evaluate(() => (window as any).__scrapo.session.mutate((s: any) => { s.ferro.built.push('b_bench_modules'); }));
+  await expect.poll(async () => (await benchState(page)).overlays).toContain('bench_up_vise');
+  expect((await benchState(page)).uses).toBe(all.uses);
+});
+
+test('clicar na bancada com melhorias leva o herói até ela e abre a Oficina', async ({ page }) => {
+  const bench = await building(page, 'Oficina');
+  const at = await toScreen(page, { x: bench.x, y: bench.y });
   await page.mouse.click(at.x, at.y);
   await expect(page.locator('#panel h2')).toHaveText('Oficina', { timeout: 10_000 });
   const feet = await page.evaluate(() => { const w = (window as any).__scrapo.world(); return { x: w.feetX, y: w.feetY }; });
@@ -51,12 +72,12 @@ test('clicar na Bancada de Módulos leva o herói até ela e abre a Oficina', as
 });
 
 test('hover destaca só a construção sob o cursor', async ({ page }) => {
-  const tools = await building(page, 'Bancada de Ferramentas');
-  const at = await toScreen(page, { x: tools.x, y: tools.y - 4 });
+  const alchemy = await building(page, 'Estação Alquímica');
+  const at = await toScreen(page, { x: alchemy.x, y: alchemy.y - 4 });
   await page.mouse.move(at.x, at.y);
   const tinted = await page.evaluate(() => {
     const w = (window as any).__scrapo.world();
     return w.interactables.filter((i: any) => i.sprite?.texture?.key?.startsWith('decor_') && i.sprite.isTinted).map((i: any) => i.label());
   });
-  expect(tinted).toEqual(['F —Bancada de Ferramentas']);
+  expect(tinted).toEqual(['F —Estação Alquímica']);
 });

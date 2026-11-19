@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUILD_NODES, type BuildNodeId } from '../data/ferromancy';
-import { BUILD_GAP, DECOR, DECOR_GAP, DECOR_ORDER, decorFor, gap, isUsable, newPlot, placeDecor, releaseDecor, tileKey, type DecorId, type PlotGrid, type Tile } from './decor';
+import { BENCH_FLOOR, BENCH_UPGRADES, BUILD_GAP, DECOR, DECOR_GAP, DECOR_ORDER, benchUpgrades, decorFor, gap, isUsable, newPlot, placeDecor, releaseDecor, tileKey, type DecorId, type PlotGrid, type Tile } from './decor';
 import { buildNode } from './progression';
 import { discover } from './spells';
 import { addItems, newGame, removeItems, type GameState } from './state';
@@ -76,10 +76,34 @@ describe('decorFor', () => {
     expect(decorFor(s)).not.toContain('reagent_crates');
   });
 
-  it('shows one prop per build node when everything is built', () => {
+  it('shows one prop per plot building and none for bench upgrades when everything is built', () => {
     const ids = decorFor(withBuilt(ALL_BUILD));
-    for (const id of ALL_BUILD) expect(ids).toContain(id);
+    for (const id of ALL_BUILD) {
+      if ((BENCH_UPGRADES as readonly string[]).includes(id)) expect(ids).not.toContain(id);
+      else expect(ids).toContain(id);
+    }
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('still counts bench upgrades toward the lamps', () => {
+    const three = decorFor(withBuilt(['b_workshop', 'b_bench_tools', 'b_bench_modules']));
+    expect(three).toEqual(['b_workshop', 'swept_ground', 'lamps_low']);
+  });
+});
+
+describe('benchUpgrades', () => {
+  it('lists nothing on a new game', () => {
+    expect(benchUpgrades(newGame(T0))).toEqual([]);
+  });
+
+  it('lists only the built upgrades, in the fixed bench order', () => {
+    const s = newGame(T0);
+    s.ferro.built.push('b_drone_bay', 'b_alchemy', 'b_bench_tools');
+    expect(benchUpgrades(s)).toEqual(['b_bench_tools', 'b_drone_bay']);
+  });
+
+  it('lists all four once everything is built', () => {
+    expect(benchUpgrades(withBuilt(ALL_BUILD))).toEqual(['b_bench_tools', 'b_bench_modules', 'b_drone_servos', 'b_drone_bay']);
   });
 });
 
@@ -127,10 +151,24 @@ describe('placeDecor', () => {
     }
   });
 
+  it('never places a bench upgrade as a prop, nor any prop on the drone pad floor', () => {
+    const pad = new Set(BENCH_FLOOR.map(([dx, dy]) => tileKey({ x: BENCH.x + dx, y: BENCH.y + dy })));
+    for (const grid of [patio, open]) {
+      const placed = placeDecor(DECOR_ORDER, newPlot(BENCH), grid);
+      for (const id of BENCH_UPGRADES) expect(placed.has(id as unknown as DecorId)).toBe(false);
+      for (const [id, t] of placed) if (!DECOR[id].floor) expect(pad.has(tileKey(t)), `${id} on the pad`).toBe(false);
+    }
+  });
+
+  it('claims the drone pad floor in every new plot', () => {
+    const plot = newPlot(origin);
+    for (const [dx, dy] of BENCH_FLOOR) expect(plot.claimed.has(tileKey({ x: origin.x + dx, y: origin.y + dy }))).toBe(true);
+  });
+
   it('falls back to the next slot when the first one is blocked', () => {
-    const [first, second] = DECOR.b_bench_tools.slots;
+    const [first, second] = DECOR.b_workshop.slots;
     const grid: PlotGrid = { isFree: (x, y) => !(x === origin.x + first[0] && y === origin.y + first[1]), walkable: () => true };
-    expect(placeDecor(['b_bench_tools'], newPlot(origin), grid).get('b_bench_tools')).toEqual({ x: origin.x + second[0], y: origin.y + second[1] });
+    expect(placeDecor(['b_workshop'], newPlot(origin), grid).get('b_workshop')).toEqual({ x: origin.x + second[0], y: origin.y + second[1] });
   });
 
   it('falls back when another building would stand closer than the minimum gap', () => {
@@ -141,9 +179,9 @@ describe('placeDecor', () => {
   });
 
   it('skips a building whose neighbours are all walls, since the hero could not reach it', () => {
-    const [dx, dy] = DECOR.b_drone_bay.slots[0];
+    const [dx, dy] = DECOR.b_alembic.slots[0];
     const only = (x: number, y: number) => x === origin.x + dx && y === origin.y + dy;
-    expect(placeDecor(['b_drone_bay'], newPlot(origin), { isFree: only, walkable: only }).has('b_drone_bay')).toBe(false);
+    expect(placeDecor(['b_alembic'], newPlot(origin), { isFree: only, walkable: only }).has('b_alembic')).toBe(false);
   });
 
   it('skips a decor whose every slot is blocked instead of placing it on a path', () => {
@@ -152,8 +190,8 @@ describe('placeDecor', () => {
 
   it('frees the tile and the anchor when a prop goes away', () => {
     const plot = newPlot(origin);
-    const t = placeDecor(['b_bench_tools'], plot, open).get('b_bench_tools')!;
-    releaseDecor(plot, 'b_bench_tools', t);
+    const t = placeDecor(['b_workshop'], plot, open).get('b_workshop')!;
+    releaseDecor(plot, 'b_workshop', t);
     expect(plot.claimed.has(tileKey(t))).toBe(false);
     expect(plot.anchors).toEqual([origin]);
   });

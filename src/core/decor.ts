@@ -6,7 +6,11 @@ import { countOf, type GameState } from './state';
 // The workshop plot around the Pátio bench: what stands there is read off the save, never stored.
 
 export type ProgressDecorId = 'swept_ground' | 'lamps_low' | 'lamps_high' | 'banner' | 'reagent_crates';
-export type DecorId = BuildNodeId | ProgressDecorId;
+/** Builds that upgrade the bench itself: drawn on it, opened through it, never a prop of their own. */
+export const BENCH_UPGRADES = ['b_bench_tools', 'b_bench_modules', 'b_drone_servos', 'b_drone_bay'] as const;
+export type BenchUpgradeId = (typeof BENCH_UPGRADES)[number];
+export type PlotBuildingId = Exclude<BuildNodeId, BenchUpgradeId>;
+export type DecorId = PlotBuildingId | ProgressDecorId;
 
 export type DecorRule =
   | { built: BuildNodeId }
@@ -31,10 +35,6 @@ const REACH_RADIUS = 16;
 
 export const DECOR: Record<DecorId, DecorDef> = {
   b_workshop: { rule: { built: 'b_workshop' }, slots: [[-3, -1], [-3, 0], [-4, -1]] },
-  b_bench_tools: { rule: { built: 'b_bench_tools' }, slots: [[3, -1], [3, 0], [3, 1]] },
-  b_bench_modules: { rule: { built: 'b_bench_modules' }, slots: [[7, 0], [6, 0], [7, 1]] },
-  b_drone_servos: { rule: { built: 'b_drone_servos' }, slots: [[10, 1], [9, 0], [10, 0]] },
-  b_drone_bay: { rule: { built: 'b_drone_bay' }, slots: [[7, 3], [6, 3], [5, 3]] },
   b_alchemy: { rule: { built: 'b_alchemy' }, slots: [[-6, -1], [-6, 0], [-5, -1]] },
   b_alembic: { rule: { built: 'b_alembic' }, slots: [[-4, 2], [-5, 2], [-4, 3]] },
   swept_ground: { rule: { builtAtLeast: 1 }, slots: [[0, 1]], floor: true },
@@ -47,7 +47,10 @@ export const DECOR: Record<DecorId, DecorDef> = {
 /** Fixed order: placement claims slots in this order, so a layout is stable across reloads. */
 export const DECOR_ORDER = Object.keys(DECOR) as DecorId[];
 
-export const isUsable = (id: DecorId): id is BuildNodeId => Object.hasOwn(BUILD_NODES, id);
+/** Floor right of the bench kept for the drone pad, so no decor ever stands on it. */
+export const BENCH_FLOOR: readonly (readonly [number, number])[] = [[1, 0], [2, 0], [3, 0]];
+
+export const isUsable = (id: DecorId): id is PlotBuildingId => Object.hasOwn(BUILD_NODES, id);
 
 export function ruleMet(state: GameState, rule: DecorRule): boolean {
   if ('built' in rule) return owns(state, rule.built);
@@ -57,6 +60,10 @@ export function ruleMet(state: GameState, rule: DecorRule): boolean {
 
 export function decorFor(state: GameState): DecorId[] {
   return DECOR_ORDER.filter((id) => ruleMet(state, DECOR[id].rule));
+}
+
+export function benchUpgrades(state: GameState): BenchUpgradeId[] {
+  return BENCH_UPGRADES.filter((id) => owns(state, id));
 }
 
 export interface Tile { x: number; y: number }
@@ -81,7 +88,8 @@ export interface Plot {
 }
 
 export function newPlot(origin: Tile): Plot {
-  return { origin, claimed: new Set([tileKey(origin)]), anchors: [origin] };
+  const floor = BENCH_FLOOR.map(([dx, dy]) => tileKey({ x: origin.x + dx, y: origin.y + dy }));
+  return { origin, claimed: new Set([tileKey(origin), ...floor]), anchors: [origin] };
 }
 
 const STEPS: readonly [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
