@@ -70,9 +70,14 @@ function handlePanelClick(event: MouseEvent): void {
   if (action === 'dismantle') session.run((state) => dismantle(state, value as ItemId));
   if (action === 'craft') session.run((state) => craft(state, value));
   if (action === 'buy') session.run((state) => buy(state, value));
-  if (action === 'sell') { const id = value as ItemId; const qty = button.dataset.qty === 'all' ? countOf(session.state, id) : 1; session.run((state) => sell(state, id, qty)); }
+  if (action === 'sell') { const id = value as ItemId; const qty = button.dataset.qty === 'all' ? countOf(session.state, id) : 1; if (session.run((state) => sell(state, id, qty)).ok) coinPop(); }
   if (action === 'afk') afkStart(value as AfkAreaId);
   if (action === 'reset' && window.confirm('Apagar todo o progresso local?')) { session.reset(); window.location.reload(); }
+}
+
+/** Sale feedback: the credit counter bumps after the panel re-renders. */
+function coinPop(): void {
+  requestAnimationFrame(() => document.querySelector('#panel .money')?.classList.add('coin-pop'));
 }
 
 function renderPanel(): void {

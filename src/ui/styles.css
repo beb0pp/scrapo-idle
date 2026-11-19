@@ -89,12 +89,15 @@ button.primary { background: #6d4a12; border-color: var(--amber); }
 .area { color: var(--cyan); }
 .objective { position: absolute; top: 48px; left: 10px; max-width: min(460px, calc(100vw - 20px)); background: rgba(27, 26, 36, 0.8); border-left: 3px solid var(--amber); padding: 4px 8px; font-size: 14px; }
 .objective::before { content: 'Objetivo: '; color: var(--amber); }
-.hud-bottom { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
-.skill { position: relative; width: 74px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(27, 26, 36, 0.9); overflow: hidden; padding: 2px; }
-.skill b { color: var(--amber); }
-.skill span { font-size: 11px; }
-.skill .cd { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(0, 0, 0, 0.6); }
-.skill.inv b { color: var(--cyan); }
+.hud-bottom { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; align-items: end; }
+.skill { position: relative; width: 64px; height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: end; background: rgba(27, 26, 36, 0.94); border-color: #4a5468; box-shadow: inset 0 0 0 2px #282634, inset 0 2px 0 rgba(123, 138, 163, 0.34); overflow: hidden; padding: 2px 2px 4px; }
+.skill:hover:not(:disabled) { border-color: var(--amber); box-shadow: inset 0 0 0 2px #3b302b, 0 0 8px rgba(246, 200, 74, 0.35); }
+.skill-key { position: absolute; z-index: 3; top: 3px; left: 3px; min-width: 16px; padding: 1px 2px; color: var(--amber); background: #282634; border: 1px solid #7b8aa3; box-shadow: 1px 1px 0 #14121e; font-size: 10px; line-height: 1; }
+.skill.inv .skill-key { color: var(--cyan); }
+.skill-icon { position: absolute; z-index: 1; top: 5px; left: 50%; width: 48px; height: 48px; image-rendering: pixelated; transform: translateX(-50%); }
+.skill span { position: relative; z-index: 3; padding: 0 2px; background: rgba(20, 18, 30, 0.78); font-size: 10px; line-height: 11px; }
+.skill .cd { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; height: 0; background: rgba(9, 8, 14, 0.68); pointer-events: none; }
+.skill.is-locked { opacity: 0.45; filter: grayscale(1); }
 .drone-badge { position: absolute; bottom: 10px; right: 10px; display: flex; gap: 6px; align-items: center; background: rgba(27, 26, 36, 0.86); border: 2px solid var(--line); padding: 4px 8px; font-size: 13px; }
 #prompt { position: absolute; bottom: 74px; left: 50%; transform: translateX(-50%); background: rgba(27, 26, 36, 0.92); border: 2px solid var(--amber); padding: 4px 10px; pointer-events: none; }
 #boss { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: min(380px, 70vw); text-align: center; background: rgba(27, 26, 36, 0.9); border: 2px solid var(--red); padding: 4px 8px; }
@@ -184,19 +187,26 @@ button.primary { background: #6d4a12; border-color: var(--amber); }
 .tool-slot {
   position: relative;
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 64px;
+  height: 64px;
   place-items: center;
   padding: 2px;
+  background: rgba(27, 26, 36, 0.94);
+  border-color: #4a5468;
+  box-shadow: inset 0 0 0 2px #282634, inset 0 2px 0 rgba(123, 138, 163, 0.34);
 }
 
 .tool-slot b {
   position: absolute;
-  top: 1px;
+  top: 3px;
   left: 3px;
   z-index: 1;
   color: var(--amber);
-  font-size: 11px;
+  padding: 1px 2px;
+  border: 1px solid #7b8aa3;
+  background: #282634;
+  box-shadow: 1px 1px 0 #14121e;
+  font-size: 10px;
 }
 
 .tool-slot img {

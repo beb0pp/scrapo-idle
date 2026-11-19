@@ -130,167 +130,248 @@ function disc(ctx: CanvasRenderingContext2D, color: string, cx: number, cy: numb
   for (let y = -rad; y <= rad; y++) for (let x = -rad; x <= rad; x++) if (x * x + y * y <= rad * rad + rad) ctx.fillRect(cx + x, cy + y, 1, 1);
 }
 
-// Item icons, 16×16: dark outline, three tones lit from the top-left, one readable silhouette per item.
-const K = '#1b1a24';
-const px = (c: CanvasRenderingContext2D, color: string, pts: [number, number][]) => pts.forEach(([x, y]) => r(c, color, x, y, 1, 1));
+// Item icons, 16×16: shapes lit from the top-left, then a warm 1px outline around and between parts.
+const OUT = '#2a1a14';
+type Ramp = readonly [shadow: string, base: string, light: string, glint: string];
+type Pred = (x: number, y: number) => boolean;
+type Pt = [number, number];
 
-function wrench(c: CanvasRenderingContext2D, steel: string, light: string, dark: string, grip: string): void {
-  for (let i = 0; i < 9; i++) r(c, K, 1 + i, 13 - i, 3, 3);
-  for (let i = 0; i < 9; i++) {
-    r(c, i < 4 ? grip : steel, 2 + i, 13 - i, 1, 1);
-    r(c, i < 4 ? dark : light, 2 + i, 14 - i, 1, 1);
+const SLATE: Ramp = ['#4a5468', '#7b8aa3', '#a9b4c6', '#eef2f8'];
+const STEEL: Ramp = ['#353b4b', '#4a5468', '#7b8aa3', '#a9b4c6'];
+const COPPER: Ramp = ['#a8481e', '#d7833b', '#f0aa62', '#ffe0b0'];
+const RUST: Ramp = ['#6e2a12', '#a8481e', '#d7833b', '#f0aa62'];
+const BRASS: Ramp = ['#a8761e', '#e0b33a', '#f6d77a', '#fff6d0'];
+const TEAL: Ramp = ['#1f7f8a', '#5fd0d8', '#9fe8ee', '#ffffff'];
+const LEATHER: Ramp = ['#4a3020', '#6b4a2e', '#8a5a34', '#b07a4a'];
+const WOOD: Ramp = ['#6b4a2e', '#8a5a34', '#b07a4a', '#d8a670'];
+
+const inRect = (x0: number, y0: number, w: number, h: number): Pred => (x, y) => x >= x0 && x < x0 + w && y >= y0 && y < y0 + h;
+const inDisc = (cx: number, cy: number, rad: number): Pred => (x, y) => (x - cx) ** 2 + (y - cy) ** 2 <= rad * rad + rad;
+const inSeg = (x0: number, y0: number, x1: number, y1: number, half: number): Pred => (x, y) => {
+  const dx = x1 - x0, dy = y1 - y0;
+  const t = Math.max(0, Math.min(1, ((x - x0) * dx + (y - y0) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(x - x0 - t * dx, y - y0 - t * dy) <= half;
+};
+const any = (...ps: Pred[]): Pred => (x, y) => ps.some((p) => p(x, y));
+const all = (...ps: Pred[]): Pred => (x, y) => ps.every((p) => p(x, y));
+const not = (p: Pred): Pred => (x, y) => !p(x, y);
+
+class IconGrid {
+  private readonly cells: (string | undefined)[] = new Array(256);
+
+  private at(x: number, y: number): string | undefined {
+    return x >= 0 && x < 16 && y >= 0 && y < 16 ? this.cells[y * 16 + x] : undefined;
   }
-  r(c, K, 9, 0, 7, 7);
-  r(c, steel, 10, 1, 5, 5);
-  r(c, light, 10, 1, 4, 1);
-  r(c, dark, 14, 2, 1, 4);
-  r(c, K, 12, 0, 3, 3);
-  r(c, K, 13, 3, 1, 1);
+
+  private put(x: number, y: number, color: string | undefined): void {
+    if (x >= 0 && x < 16 && y >= 0 && y < 16) this.cells[y * 16 + x] = color;
+  }
+
+  dot(color: string, ...pts: Pt[]): void {
+    pts.forEach(([x, y]) => this.put(x, y, color));
+  }
+
+  fill(color: string, p: Pred): void {
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (p(x, y)) this.put(x, y, color);
+  }
+
+  clear(p: Pred): void {
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (p(x, y)) this.put(x, y, undefined);
+  }
+
+  // Shaded part: lit top/left edges, shadowed bottom/right edges, one glint just inside the top-left; outlined against earlier parts.
+  blob(ramp: Ramp, p: Pred, seam = true): void {
+    if (seam) {
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        if (!p(x, y) && this.at(x, y) && (p(x - 1, y) || p(x + 1, y) || p(x, y - 1) || p(x, y + 1))) this.put(x, y, OUT);
+      }
+    }
+    let glint = false;
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      if (!p(x, y)) continue;
+      const lit = !p(x - 1, y) || !p(x, y - 1);
+      const shade = !p(x + 1, y) || !p(x, y + 1);
+      this.put(x, y, lit && !shade ? ramp[2] : shade && !lit ? ramp[0] : ramp[1]);
+      if (!glint && p(x - 1, y) && p(x, y - 1) && p(x + 1, y) && p(x, y + 1)) {
+        this.put(x, y, ramp[3]);
+        glint = true;
+      }
+    }
+  }
+
+  paint(c: CanvasRenderingContext2D): void {
+    const rim: Pt[] = [];
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      if (!this.at(x, y) && (this.at(x - 1, y) || this.at(x + 1, y) || this.at(x, y - 1) || this.at(x, y + 1))) rim.push([x, y]);
+    }
+    this.dot(OUT, ...rim);
+    for (let i = 0; i < 256; i++) {
+      const color = this.cells[i];
+      if (color) r(c, color, i % 16, Math.floor(i / 16), 1, 1);
+    }
+  }
 }
+
+const icon = (draw: (g: IconGrid) => void) => (c: CanvasRenderingContext2D): void => {
+  const g = new IconGrid();
+  draw(g);
+  g.paint(c);
+};
+
+const wrench = (steel: Ramp, grip: Ramp, wear: string) => icon((g) => {
+  g.blob(steel, any(inSeg(5, 10, 10, 5, 1), inDisc(11, 4, 3)));
+  g.clear(inSeg(12, 3, 15, 0, 0.8));
+  g.blob(grip, inSeg(2, 13, 6, 9, 1.2));
+  g.dot(wear, [8, 7], [10, 6], [3, 13]);
+});
 
 /** Items without art here (Ferromancia reagents) get their icons from art/ferroArt.ts. */
 const ICON_ART: Partial<Record<ItemId, (c: CanvasRenderingContext2D) => void>> = {
-  scrap: (c) => {
-    disc(c, K, 8, 10, 6);
-    r(c, '#6f3c22', 3, 8, 6, 5); r(c, '#9b5a32', 3, 8, 6, 2); r(c, '#c27a48', 3, 8, 3, 1);
-    r(c, '#5d636b', 7, 6, 6, 6); r(c, '#8d949c', 7, 6, 6, 2); r(c, '#c4c9cf', 7, 6, 3, 1);
-    r(c, '#3e3a3c', 5, 12, 7, 2);
-    disc(c, K, 11, 12, 2); disc(c, '#b8bcc4', 11, 12, 1); r(c, K, 11, 12, 1, 1);
-  },
-  gear: (c) => {
-    const teeth: [number, number][] = [[7, 0], [7, 14], [0, 7], [14, 7], [2, 2], [12, 2], [2, 12], [12, 12]];
-    teeth.forEach(([x, y]) => r(c, K, x, y, 2, 2));
-    disc(c, K, 8, 8, 6); disc(c, '#8d949c', 8, 8, 5); disc(c, '#b8bcc4', 7, 7, 3);
-    disc(c, K, 8, 8, 2); r(c, '#3e3a3c', 8, 8, 1, 1);
-    px(c, '#e0e4ea', [[5, 4], [4, 5], [6, 4]]);
-  },
-  cable: (c) => {
-    r(c, K, 2, 2, 12, 12); r(c, '#8b6340', 3, 3, 10, 10);
-    r(c, K, 4, 4, 8, 8);
-    for (let y = 4; y < 12; y++) r(c, y % 2 ? '#a8552e' : '#d27d2c', 4, y, 8, 1);
-    r(c, '#f0a860', 4, 4, 8, 1);
-    r(c, '#6a4a30', 3, 3, 10, 1); r(c, '#6a4a30', 3, 12, 10, 1);
-    px(c, '#d27d2c', [[12, 13], [13, 14], [14, 14], [15, 15]]);
-  },
-  servo: (c) => {
-    r(c, K, 1, 4, 13, 10); r(c, '#4a515c', 2, 5, 11, 8); r(c, '#7d8792', 2, 5, 11, 2); r(c, '#9aa3ad', 2, 5, 5, 1);
-    r(c, '#e0b33a', 4, 9, 5, 3); r(c, K, 5, 10, 3, 1);
-    disc(c, K, 11, 4, 2); disc(c, '#c4c9cf', 11, 4, 1);
-    r(c, K, 10, 0, 6, 3); r(c, '#e8e2d0', 11, 1, 4, 1);
-    px(c, '#c4c9cf', [[3, 12], [12, 12]]);
-  },
-  cell: (c) => {
-    r(c, K, 3, 2, 10, 13); r(c, '#2d5a26', 4, 3, 8, 11); r(c, '#3f7a34', 4, 3, 3, 11); r(c, '#62a14b', 4, 3, 1, 11);
-    r(c, K, 6, 0, 4, 3); r(c, '#c4c9cf', 7, 1, 2, 1);
-    for (let i = 0; i < 3; i++) r(c, '#9be36b', 6, 10 - i * 3, 4, 2);
-  },
-  drone_chassis: (c) => {
-    r(c, K, 4, 5, 8, 7); r(c, '#5d636b', 5, 6, 6, 5); r(c, '#8d949c', 5, 6, 6, 1);
-    r(c, K, 6, 7, 4, 3); r(c, '#2e8c96', 7, 8, 2, 1);
-    r(c, K, 0, 3, 5, 2); r(c, '#8d949c', 1, 3, 3, 1);
-    r(c, K, 11, 11, 5, 2); r(c, '#8d949c', 12, 11, 3, 1);
-    px(c, '#c27a48', [[3, 9], [12, 4], [13, 5]]);
-    px(c, K, [[9, 6], [10, 7]]);
-  },
-  pulse_core: (c) => {
-    disc(c, '#3b1d5c', 8, 8, 7); disc(c, '#6a3aa8', 8, 8, 5); disc(c, '#a878f0', 8, 8, 3); disc(c, '#efe0ff', 7, 7, 1);
-    r(c, K, 7, 0, 2, 3); r(c, K, 7, 13, 2, 3); r(c, K, 0, 7, 3, 2); r(c, K, 13, 7, 3, 2);
-    r(c, '#8d949c', 7, 1, 1, 2); r(c, '#8d949c', 7, 14, 1, 1); r(c, '#8d949c', 1, 7, 2, 1); r(c, '#8d949c', 14, 7, 1, 1);
-  },
-  mod_claw: (c) => {
-    r(c, K, 4, 1, 8, 7); r(c, '#b0962f', 5, 2, 6, 5); r(c, '#e0b33a', 5, 2, 6, 2); r(c, '#f6dd8a', 5, 2, 3, 1);
-    r(c, K, 3, 7, 3, 7); r(c, K, 10, 7, 3, 7);
-    r(c, '#b8bcc4', 4, 8, 1, 5); r(c, '#b8bcc4', 11, 8, 1, 5);
-    r(c, K, 5, 13, 2, 2); r(c, K, 9, 13, 2, 2); r(c, '#e0e4ea', 5, 13, 1, 1); r(c, '#e0e4ea', 10, 13, 1, 1);
-    r(c, '#2e8c96', 7, 4, 2, 2);
-  },
-  mod_magnet: (c) => {
-    r(c, K, 2, 2, 12, 12);
-    r(c, '#b13a2c', 3, 3, 10, 4); r(c, '#b13a2c', 3, 3, 3, 10); r(c, '#b13a2c', 10, 3, 3, 10);
-    r(c, '#e8433a', 3, 3, 10, 2); r(c, '#e8433a', 3, 3, 1, 10); r(c, '#ff8a6a', 4, 3, 4, 1);
-    r(c, K, 6, 7, 4, 7);
-    r(c, '#e0e4ea', 3, 11, 3, 2); r(c, '#e0e4ea', 10, 11, 3, 2);
-    px(c, '#9fe8ee', [[7, 13], [8, 12], [7, 11]]);
-  },
-  mod_cargo: (c) => {
-    r(c, K, 1, 3, 14, 11); r(c, '#9c6b3a', 2, 4, 12, 9); r(c, '#c98e52', 2, 4, 12, 2); r(c, '#74502b', 2, 11, 12, 2);
-    r(c, K, 6, 3, 1, 11); r(c, K, 9, 3, 1, 11);
-    r(c, '#e0b33a', 7, 4, 2, 9);
-    px(c, '#e8e2d0', [[3, 5], [12, 5]]);
-  },
-  drone_spark: (c) => {
-    r(c, K, 0, 2, 16, 3); r(c, '#c4c9cf', 1, 3, 5, 1); r(c, '#c4c9cf', 10, 3, 5, 1);
-    r(c, K, 7, 3, 2, 4);
-    disc(c, K, 8, 10, 5); disc(c, '#b0962f', 8, 10, 4); disc(c, '#e0b33a', 7, 9, 3);
-    disc(c, K, 8, 10, 2); r(c, '#5fd0d8', 7, 9, 2, 2); r(c, '#ffffff', 7, 9, 1, 1);
-  },
-  relic_crane_coil: (c) => {
-    disc(c, '#f6b24a', 8, 8, 7); disc(c, '#3b2a1a', 8, 8, 6);
-    r(c, K, 4, 3, 8, 10);
-    for (let y = 4; y < 12; y++) r(c, y % 2 ? '#8f4f26' : '#d27d2c', 5, y, 6, 1);
-    r(c, '#5d636b', 7, 2, 2, 12); r(c, '#b8bcc4', 7, 2, 1, 12);
-    px(c, '#fff2b0', [[1, 8], [14, 6], [8, 1]]);
-  },
-  relic_capacitor: (c) => {
-    disc(c, '#2e8c96', 8, 8, 7);
-    r(c, K, 4, 1, 8, 13); r(c, '#253b46', 5, 2, 6, 11); r(c, '#2e8c96', 5, 2, 2, 11);
-    r(c, '#9fe8ee', 6, 3, 1, 9);
-    px(c, '#b48ae6', [[9, 4], [9, 7], [9, 10]]);
-    r(c, K, 5, 14, 1, 2); r(c, K, 10, 14, 1, 2); r(c, '#c4c9cf', 5, 14, 1, 1); r(c, '#c4c9cf', 10, 14, 1, 1);
-  },
-  tool_wrench_old: (c) => wrench(c, '#8d949c', '#b8bcc4', '#5d636b', '#9b5a32'),
-  tool_wrench_reinforced: (c) => wrench(c, '#b8bcc4', '#e8ecf2', '#7d8792', '#3d6a8a'),
-  tool_hydraulic_pry: (c) => {
-    for (let i = 0; i < 11; i++) r(c, K, 1 + i, 14 - i, 3, 2);
-    for (let i = 0; i < 11; i++) r(c, i < 5 ? '#e0b33a' : '#8d949c', 2 + i, 14 - i, 1, 1);
-    r(c, K, 11, 0, 5, 5); r(c, '#b8bcc4', 12, 1, 3, 3); r(c, K, 13, 2, 1, 1);
-    r(c, K, 3, 8, 4, 4); r(c, '#5d636b', 4, 9, 2, 2); r(c, '#c4c9cf', 4, 9, 1, 1);
-  },
-  head_scrap_cap: (c) => {
-    r(c, K, 3, 4, 10, 7); r(c, '#a8561a', 4, 5, 8, 5); r(c, '#d97b2b', 4, 5, 8, 2); r(c, '#f0a860', 5, 5, 3, 1);
-    r(c, K, 1, 10, 14, 3); r(c, '#6b4a2e', 2, 11, 12, 1);
-    r(c, '#5d636b', 9, 6, 2, 2);
-    r(c, K, 7, 3, 2, 1);
-  },
-  body_work_jacket: (c) => {
-    r(c, K, 2, 2, 12, 13); r(c, '#a8561a', 3, 3, 10, 11); r(c, '#d97b2b', 3, 3, 4, 11); r(c, '#f0a860', 3, 3, 1, 11);
-    r(c, K, 7, 3, 2, 11); r(c, '#c4c9cf', 7, 4, 1, 9);
-    r(c, K, 5, 2, 6, 2); r(c, '#6b4a2e', 6, 2, 4, 1);
-    r(c, '#6b4a2e', 4, 9, 2, 2); r(c, '#6b4a2e', 10, 9, 2, 2);
-    r(c, K, 0, 4, 2, 7); r(c, K, 14, 4, 2, 7);
-  },
-  hands_grip_gloves: (c) => {
-    r(c, K, 1, 4, 7, 10); r(c, '#b0962f', 2, 5, 5, 8); r(c, '#e0b33a', 2, 5, 2, 8);
-    r(c, K, 8, 2, 7, 10); r(c, '#b0962f', 9, 3, 5, 8); r(c, '#e0b33a', 9, 3, 2, 8);
-    r(c, '#6b4a2e', 2, 11, 5, 2); r(c, '#6b4a2e', 9, 9, 5, 2);
-    px(c, K, [[4, 4], [11, 2], [13, 2]]);
-  },
-  feet_rail_boots: (c) => {
-    r(c, K, 2, 2, 6, 10); r(c, '#6b4a2e', 3, 3, 4, 8); r(c, '#8b6340', 3, 3, 1, 8);
-    r(c, K, 2, 10, 13, 5); r(c, '#6b4a2e', 3, 11, 11, 3); r(c, '#8d949c', 11, 11, 3, 3); r(c, '#c4c9cf', 11, 11, 2, 1);
-    r(c, '#3b2a1a', 3, 13, 11, 1);
-    px(c, '#e0b33a', [[4, 5], [4, 7]]);
-  },
-  accessory_lucky_bolt: (c) => {
-    r(c, K, 4, 1, 8, 5); r(c, '#b0962f', 5, 2, 6, 3); r(c, '#f6dd8a', 5, 2, 6, 1);
-    r(c, K, 6, 5, 4, 10); r(c, '#b0962f', 7, 6, 2, 8);
-    for (let y = 7; y < 14; y += 2) r(c, '#f6dd8a', 7, y, 2, 1);
-    px(c, '#fffbe0', [[13, 3], [14, 2], [12, 2], [13, 1], [13, 4]]);
-  },
+  scrap: icon((g) => {
+    g.blob(RUST, inSeg(9, 3, 13, 8, 1.3));
+    g.blob(SLATE, any(inRect(2, 7, 8, 5), inRect(4, 5, 4, 2), inSeg(9, 9, 11, 12, 1)));
+    g.fill(SLATE[0], inSeg(3, 9, 7, 9, 0.4));
+    g.blob(BRASS, inDisc(12, 12, 1));
+    g.dot(OUT, [12, 12]);
+  }),
+  gear: icon((g) => {
+    g.blob(SLATE, any(
+      inDisc(8, 8, 5),
+      inRect(7, 1, 3, 2), inRect(7, 14, 3, 1), inRect(1, 7, 2, 3), inRect(14, 7, 1, 3),
+      inRect(3, 3, 2, 2), inRect(12, 3, 2, 2), inRect(3, 12, 2, 2), inRect(12, 12, 2, 2),
+    ));
+    g.blob(BRASS, inDisc(8, 8, 2));
+    g.clear(inDisc(8, 8, 0));
+  }),
+  cable: icon((g) => {
+    const coil = all(inDisc(8, 8, 6), not(inDisc(8, 8, 2)));
+    g.blob(COPPER, coil);
+    g.fill(RUST[1], all(coil, (x, y) => (x + 2 * y) % 4 === 0));
+    g.clear(inDisc(8, 8, 1));
+    g.blob(COPPER, inSeg(12, 12, 14, 14, 0.6));
+  }),
+  servo: icon((g) => {
+    g.blob(STEEL, any(inRect(1, 8, 2, 3), inRect(13, 8, 2, 3)));
+    g.blob(SLATE, inRect(3, 6, 10, 8));
+    g.blob(COPPER, inRect(5, 9, 5, 3));
+    g.blob(BRASS, inRect(9, 3, 3, 3));
+    g.blob(BRASS, inRect(7, 1, 7, 2));
+    g.dot(SLATE[3], [4, 12], [11, 12]);
+  }),
+  cell: icon((g) => {
+    g.blob(TEAL, inRect(4, 4, 8, 8));
+    g.dot(TEAL[0], [9, 5], [8, 6], [8, 7], [9, 7], [9, 8], [8, 9]);
+    g.dot(TEAL[3], [5, 6], [5, 7], [6, 5]);
+    g.blob(SLATE, inRect(4, 2, 8, 2));
+    g.blob(SLATE, inRect(4, 12, 8, 2));
+    g.blob(STEEL, inRect(6, 1, 4, 1));
+  }),
+  drone_chassis: icon((g) => {
+    g.blob(STEEL, any(inSeg(2, 3, 6, 7, 0.7), inSeg(10, 7, 12, 5, 0.7), inSeg(5, 11, 3, 13, 0.7), inSeg(11, 11, 13, 13, 0.7)));
+    g.blob(SLATE, inRect(1, 2, 4, 1), false);
+    g.dot(RUST[1], [12, 4], [13, 5]);
+    g.blob(SLATE, inDisc(8, 9, 4));
+    g.clear(inDisc(8, 9, 1));
+  }),
+  pulse_core: icon((g) => {
+    g.blob(BRASS, any(inRect(7, 1, 3, 2), inRect(7, 14, 3, 1), inRect(1, 7, 2, 3), inRect(14, 7, 1, 3)));
+    g.blob(TEAL, inDisc(8, 8, 5));
+    g.fill(TEAL[2], inDisc(8, 8, 2));
+    g.fill(TEAL[3], inDisc(8, 8, 0));
+    g.dot(TEAL[3], [5, 5], [6, 4]);
+  }),
+  mod_claw: icon((g) => {
+    g.blob(SLATE, any(inRect(3, 8, 2, 4), inSeg(4, 11, 6, 13, 0.6), inRect(11, 8, 2, 4), inSeg(11, 11, 9, 13, 0.6)));
+    g.blob(STEEL, inRect(3, 6, 10, 2));
+    g.blob(BRASS, inRect(4, 1, 8, 5));
+    g.blob(TEAL, inRect(7, 3, 2, 2));
+  }),
+  mod_magnet: icon((g) => {
+    const arc = all(inDisc(8, 7, 6), not(inDisc(8, 7, 2)), (_x, y) => y <= 7);
+    g.blob(RUST, any(arc, inRect(2, 7, 4, 4), inRect(11, 7, 4, 4)));
+    g.blob(SLATE, any(inRect(2, 11, 4, 3), inRect(11, 11, 4, 3)));
+  }),
+  mod_cargo: icon((g) => {
+    g.blob(WOOD, inRect(2, 5, 12, 8));
+    g.fill(WOOD[0], all(inRect(3, 9, 10, 1), not(inRect(7, 0, 2, 16))));
+    g.blob(WOOD, inRect(1, 3, 14, 3));
+    g.blob(BRASS, inRect(7, 3, 2, 10));
+    g.dot(OUT, [7, 7]);
+  }),
+  drone_spark: icon((g) => {
+    g.blob(SLATE, inRect(1, 2, 14, 2));
+    g.blob(STEEL, inRect(7, 4, 2, 2));
+    g.blob(BRASS, inDisc(8, 10, 4));
+    g.blob(TEAL, inDisc(8, 10, 1));
+    g.dot(TEAL[3], [7, 9]);
+  }),
+  relic_crane_coil: icon((g) => {
+    const wind = inRect(4, 4, 8, 8);
+    g.blob(COPPER, wind);
+    g.fill(RUST[1], all(wind, (_x, y) => y % 2 === 1));
+    g.blob(SLATE, inRect(3, 2, 10, 2));
+    g.blob(SLATE, inRect(3, 12, 10, 2));
+    g.dot(BRASS[3], [1, 7], [14, 9]);
+  }),
+  relic_capacitor: icon((g) => {
+    g.blob(TEAL, inRect(4, 3, 8, 9));
+    g.blob(SLATE, inRect(9, 4, 2, 7));
+    g.dot(OUT, [9, 6], [9, 9]);
+    g.dot(TEAL[3], [5, 5], [5, 6]);
+    g.blob(STEEL, inRect(4, 1, 8, 2));
+    g.blob(BRASS, any(inRect(5, 12, 1, 2), inRect(10, 12, 1, 2)));
+  }),
+  tool_wrench_old: wrench(STEEL, LEATHER, RUST[1]),
+  tool_wrench_reinforced: wrench(SLATE, COPPER, BRASS[1]),
+  tool_hydraulic_pry: icon((g) => {
+    g.blob(SLATE, any(inSeg(3, 13, 12, 4, 0.8), inSeg(12, 4, 13, 2, 0.8), inSeg(13, 2, 14, 3, 0.6), inSeg(2, 14, 3, 13, 0.6)));
+    g.blob(BRASS, inSeg(5, 11, 8, 8, 1.5));
+    g.dot(OUT, [7, 9]);
+  }),
+  head_scrap_cap: icon((g) => {
+    g.blob(COPPER, all(inDisc(7, 10, 6), (_x, y) => y <= 10));
+    g.fill(COPPER[0], inSeg(7, 5, 7, 9, 0.3));
+    g.blob(LEATHER, inRect(6, 10, 9, 2));
+    g.blob(SLATE, inRect(3, 7, 2, 2));
+    g.blob(BRASS, inRect(6, 3, 2, 1), false);
+  }),
+  body_work_jacket: icon((g) => {
+    g.blob(RUST, any(inSeg(4, 4, 2, 12, 1.1), inSeg(11, 4, 13, 12, 1.1)));
+    g.blob(COPPER, inRect(4, 3, 8, 11));
+    g.fill(SLATE[2], inRect(7, 4, 1, 9));
+    g.fill(SLATE[0], inRect(8, 4, 1, 9));
+    g.fill(COPPER[0], any(inRect(5, 10, 2, 1), inRect(9, 10, 2, 1)));
+    g.blob(LEATHER, any(inSeg(5, 2, 7, 6, 0.7), inSeg(10, 2, 8, 6, 0.7)));
+  }),
+  hands_grip_gloves: icon((g) => {
+    const glove = any(inRect(4, 3, 2, 3), inRect(6, 2, 2, 4), inRect(8, 2, 2, 4), inRect(10, 3, 2, 3), inRect(4, 5, 8, 6), inSeg(3, 9, 2, 6, 0.8));
+    g.blob(LEATHER, glove);
+    g.fill(LEATHER[0], all(glove, any(inRect(5, 3, 1, 2), inRect(7, 2, 1, 3), inRect(9, 2, 1, 3))));
+    g.blob(BRASS, inRect(4, 11, 8, 3));
+  }),
+  feet_rail_boots: icon((g) => {
+    g.blob(LEATHER, any(inRect(3, 2, 5, 8), inRect(3, 8, 8, 4), all(inDisc(10, 10, 2), (_x, y) => y >= 8)));
+    g.blob(BRASS, inRect(3, 2, 5, 1), false);
+    g.blob(STEEL, inRect(2, 12, 12, 2));
+    g.dot(SLATE[2], [10, 9], [11, 9], [9, 9]);
+    g.dot(BRASS[1], [5, 4], [5, 6]);
+  }),
+  accessory_lucky_bolt: icon((g) => {
+    const shank = inRect(6, 6, 4, 8);
+    g.blob(BRASS, shank);
+    g.fill(BRASS[0], all(shank, (x, y) => (x + y) % 3 === 0));
+    g.blob(BRASS, all(inRect(4, 2, 8, 4), not(any(inRect(4, 2, 1, 1), inRect(11, 2, 1, 1), inRect(4, 5, 1, 1), inRect(11, 5, 1, 1)))));
+    g.fill(BRASS[0], inRect(8, 3, 1, 3));
+    g.dot(BRASS[3], [13, 1], [12, 2], [13, 2], [14, 2], [13, 3]);
+  }),
 };
 
 export const iconUrls: Partial<Record<ItemId, string>> = {};
 
-/** Data URL of the hero standing, front view (24×32). Scale it up with image-rendering: pixelated. */
-export let heroPortraitUrl = '';
+/** Hero standing (64×72 frame from the baked sheet). Scale it up with image-rendering: pixelated. */
+export const heroPortraitUrl = 'sprites/hero-portrait.png';
 
 export function buildSprites(scene: Phaser.Scene): void {
-  sheet(scene, 'hero', HERO_FRAMES, HERO_PAL, 24, 32);
-  const portrait = document.createElement('canvas');
-  portrait.width = 24;
-  portrait.height = 32;
-  drawRows(portrait.getContext('2d')!, HERO_FRAMES[0], 0, 0, HERO_PAL);
-  heroPortraitUrl = portrait.toDataURL();
   buildProps(scene);
 
   canvasTex(scene, 'wrench', 16, 16, 1, (c) => {
@@ -300,51 +381,6 @@ export function buildSprites(scene: Phaser.Scene): void {
     r(c, '#c4c9cf', 10, 2, 4, 4);
     r(c, '#1b1a24', 12, 1, 3, 3);
     r(c, '#e0e4ea', 10, 2, 1, 1);
-  });
-
-  // Ferrugem faces right: a compact riveted plate body with an alternating four-paw run.
-  canvasTex(scene, 'robodog', 24, 18, 2, (c, f, ox) => {
-    const k = '#14121e';
-    const iron = '#2a2d38';
-    const steel = '#4a5468';
-    const steelHi = '#7b8aa3';
-    const copper = '#d7833b';
-    const rust = '#a8481e';
-    const teal = '#5fd0d8';
-
-    // Raised spring tail, rear haunch, then the plated body.
-    r(c, k, ox + 0, 2, 2, 6); r(c, steelHi, ox + 1, 2, 1, 2);
-    r(c, k, ox + 1, 1, 2, 2); r(c, rust, ox + 2, 1, 1, 1);
-    r(c, k, ox + 2, 7, 3, 6); r(c, rust, ox + 3, 8, 2, 4); r(c, copper, ox + 3, 8, 2, 1);
-    r(c, k, ox + 4, 6, 13, 8); r(c, steel, ox + 5, 7, 11, 6); r(c, steelHi, ox + 5, 7, 8, 2);
-    r(c, iron, ox + 5, 11, 11, 2); r(c, copper, ox + 6, 8, 1, 1); r(c, copper, ox + 14, 12, 1, 1);
-
-    // Copper power core: riveted ring and a turquoise alchemical triangle.
-    r(c, k, ox + 8, 8, 5, 5); r(c, rust, ox + 9, 9, 3, 3); r(c, copper, ox + 9, 9, 2, 1);
-    r(c, teal, ox + 10, 9, 1, 1); r(c, teal, ox + 9, 11, 3, 1); r(c, teal, ox + 11, 10, 1, 1);
-    r(c, copper, ox + 8, 9, 1, 1); r(c, copper, ox + 12, 11, 1, 1);
-
-    // Large head, folded front ear, upright rear ear, and friendly square muzzle.
-    r(c, k, ox + 14, 2, 8, 9); r(c, steel, ox + 15, 3, 6, 6); r(c, steelHi, ox + 15, 3, 4, 2);
-    r(c, k, ox + 15, 0, 4, 4); r(c, steelHi, ox + 16, 1, 2, 2); r(c, copper, ox + 16, 1, 1, 1);
-    r(c, k, ox + 19, 2, 4, 4); r(c, rust, ox + 20, 3, 2, 2); r(c, copper, ox + 20, 3, 1, 1);
-    r(c, teal, ox + 19, 5, 1, 1); r(c, '#ffffff', ox + 19, 5, 1, 1);
-    r(c, k, ox + 20, 7, 4, 4); r(c, '#b8bcc4', ox + 20, 8, 3, 2); r(c, '#e0e4ea', ox + 20, 8, 2, 1);
-    r(c, '#e8b080', ox + 22, 8, 1, 1); r(c, k, ox + 21, 10, 2, 1);
-
-    // Scarf/collar and dangling knot at the chest.
-    r(c, k, ox + 15, 10, 5, 3); r(c, '#d06a2a', ox + 16, 10, 3, 2); r(c, '#e88a3e', ox + 16, 10, 2, 1);
-    r(c, k, ox + 18, 12, 2, 3); r(c, rust, ox + 19, 12, 1, 2);
-
-    const legs = f ? [5, 9, 13, 17] : [6, 10, 12, 16];
-    legs.forEach((x, i) => {
-      const kneeY = f && i % 2 === 0 ? 13 : 12;
-      r(c, k, ox + x, 13, 3, 4);
-      r(c, iron, ox + x + 1, 13, 1, 2);
-      r(c, rust, ox + x + 1, kneeY, 1, 1);
-      r(c, k, ox + x - 1, 16, 4, 2);
-      r(c, steelHi, ox + x, 16, 2, 1);
-    });
   });
 
   canvasTex(scene, 'marker', 10, 6, 1, (c) => {
@@ -452,14 +488,28 @@ export function buildSprites(scene: Phaser.Scene): void {
 
   const anim = (key: string, tex: string, frames: number[], rate: number) =>
     scene.anims.create({ key, frames: frames.map((frame) => ({ key: tex, frame })), frameRate: rate, repeat: -1 });
-  anim('hero-down', 'hero', [0, 1], 6);
-  anim('hero-up', 'hero', [2, 3], 6);
-  anim('hero-side', 'hero', [4, 5], 6);
+  const once = (key: string, tex: string, frames: number[], rate: number) =>
+    scene.anims.create({ key, frames: frames.map((frame) => ({ key: tex, frame })), frameRate: rate, repeat: 0 });
+  // public/sprites/hero.png, baked by tools/bake-sprites.py (frame order documented there)
+  anim('hero-idle', 'hero', [0, 0, 1, 1], 3);
+  anim('hero-walk', 'hero', [2, 3, 4, 5], 9);
+  anim('hero-idle-up', 'hero', [15], 1);
+  anim('hero-walk-up', 'hero', [16, 17, 18, 19], 9);
+  anim('hero-idle-side', 'hero', [20], 1);
+  anim('hero-walk-side', 'hero', [21, 22, 23, 24], 9);
+  once('hero-attack', 'hero', [6, 7, 8], 20);
+  anim('hero-collect', 'hero', [9, 10], 1000 / 120);
+  once('hero-hurt', 'hero', [11], 6);
+  once('hero-dash', 'hero', [12], 6);
+  once('hero-cast', 'hero', [13, 14], 10);
+  anim('dog-idle', 'robodog', [0, 1], 2);
+  anim('dog-run', 'robodog', [2, 3, 4, 5], 12);
+  once('dog-bite', 'robodog', [6, 7, 6], 14);
+  anim('dog-fetch', 'robodog', [8, 0], 6);
   anim('vendor-idle', 'vendor', [0, 1], 2);
   anim('sorter-walk', 'sorter', [0, 1], 5);
   anim('press-walk', 'press', [0, 1], 3);
   anim('drone-fly', 'drone', [0, 1], 12);
-  anim('dog-run', 'robodog', [0, 1], 10);
   anim('crane-idle', 'crane', [0, 1], 3);
   anim('pile-glint', 'pile', [0, 1], 2);
   anim('relic-pulse', 'relic', [0, 1], 3);

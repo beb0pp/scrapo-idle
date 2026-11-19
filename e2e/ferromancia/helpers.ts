@@ -49,7 +49,7 @@ export async function seedSave(page: Page, partial: SeedState = {}): Promise<voi
 
 export async function openGame(page: Page): Promise<void> {
   await page.goto('/');
-  await page.waitForFunction(() => !!(window as any).__scrapo?.game?.scene);
+  await page.waitForFunction(() => !!(window as any).__scrapo?.game?.scene?.isActive('Title'));
 }
 
 /** Warps into a map and waits until the World scene is running with its FerroController. */
