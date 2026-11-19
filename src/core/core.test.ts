@@ -190,7 +190,7 @@ describe('AFK extraction', () => {
 describe('save', () => {
   it('migrates v1 saves with the starting tool equipped', () => {
     const old = parseSave(JSON.stringify({ version: 1, inventory: { scrap: 3 }, equipped: {} }), T0);
-    expect(old.version).toBe(2);
+    expect(old.version).toBe(3);
     expect(old.equipped.tool).toBe('tool_wrench_old');
     expect(old.inventory.scrap).toBe(3);
   });

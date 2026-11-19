@@ -148,7 +148,8 @@ function wrench(c: CanvasRenderingContext2D, steel: string, light: string, dark:
   r(c, K, 13, 3, 1, 1);
 }
 
-const ICON_ART: Record<ItemId, (c: CanvasRenderingContext2D) => void> = {
+/** Items without art here (Ferromancia reagents) get their icons from art/ferroArt.ts. */
+const ICON_ART: Partial<Record<ItemId, (c: CanvasRenderingContext2D) => void>> = {
   scrap: (c) => {
     disc(c, K, 8, 10, 6);
     r(c, '#6f3c22', 3, 8, 6, 5); r(c, '#9b5a32', 3, 8, 6, 2); r(c, '#c27a48', 3, 8, 3, 1);
@@ -402,7 +403,7 @@ export function buildSprites(scene: Phaser.Scene): void {
     disc(c, f ? '#f6b24a55' : '#f6b24a33', ox + 8, 8, 7);
     c.save();
     c.translate(ox, 0);
-    ICON_ART.relic_crane_coil(c);
+    ICON_ART.relic_crane_coil!(c);
     c.restore();
   });
 
@@ -443,7 +444,9 @@ export function buildSprites(scene: Phaser.Scene): void {
   });
 
   for (const id of ITEM_IDS) {
-    canvasTex(scene, `icon_${id}`, 16, 16, 1, (c) => ICON_ART[id](c));
+    const draw = ICON_ART[id];
+    if (!draw) continue;
+    canvasTex(scene, `icon_${id}`, 16, 16, 1, (c) => draw(c));
     iconUrls[id] = (scene.textures.get(`icon_${id}`).getSourceImage() as HTMLCanvasElement).toDataURL();
   }
 
