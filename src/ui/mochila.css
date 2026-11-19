@@ -340,7 +340,7 @@
 #panel .mochila .mo-detail-icon .mo-ico { width: 48px; height: 48px; }
 
 /* A wider window so the bag shows more of what the player carries. */
-#panel[data-dock] { width: min(760px, 60vw); }
+#panel[data-dock-kind='inventory'] { width: min(760px, 60vw); }
 
 @media (max-width: 1100px) {
   #panel .mochila {
