@@ -1,5 +1,4 @@
 .ferro { --ether: #b48ae6; --ether-dk: #5b3f86; --rune: #5fd0d8; --ok: var(--green); --warn: var(--amber); --lock: #6b6475; --gold: var(--amber); --drop: #0d0c12; display: flex; flex-direction: column; gap: 10px; }
-#panel:has(.ferro) { width: min(900px, calc(100vw - 24px)); }
 .fe-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 2px solid var(--ink); padding-bottom: 6px; }
 .fe-tabs button { flex: 1 1 110px; }
 .fe-tabs button.active { background: var(--ether-dk); border-color: var(--ether); color: #fff; }
@@ -211,10 +210,6 @@ body:has(#spellbar) #prompt { bottom: 156px; }
   .fe-tile.is-available .fe-frame, .fe-bslot.is-target > button:first-child { animation: none; box-shadow: 0 3px 0 var(--drop), 0 0 8px 2px rgba(95, 208, 216, 0.5); }
 }
 
-@media (max-width: 760px) {
-  .fe-treewrap { grid-template-columns: minmax(0, 1fr); }
-}
-
 @media (max-width: 640px) {
   .spellbar { bottom: 80px; gap: 4px; }
   .spell-slot { width: 58px; }
@@ -347,3 +342,20 @@ img.fe-bico { width: 56px; height: 56px; padding: 3px; box-shadow: inset 0 0 6px
 #panel .mochila .mo-level { grid-template-columns: auto 44px; column-gap: 5px; padding: 2px 6px; max-width: calc(100% - 16px); }
 #panel .mochila .mo-level b { font-size: 13px; }
 #panel .mochila .mo-level small { font-size: 8px; }
+
+/* Narrow window (docked side panel): detail pane under the tree, smaller tiles, cards wrap. */
+@container (max-width: 640px) {
+  .fe-treewrap { grid-template-columns: minmax(0, 1fr); }
+  .fe-tree { grid-template-columns: repeat(var(--cols), 80px); column-gap: 20px; row-gap: 36px; }
+  .fe-tile { width: 80px; }
+  .fe-frame { width: 52px; height: 52px; }
+  .fe-nico { width: 40px; height: 40px; font-size: 24px; }
+  .fe-tabs button { flex: 1 1 80px; padding-left: 4px; padding-right: 4px; }
+  .fe-spells { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .fe-spell-ico { width: 48px; height: 48px; }
+  .fe-shead .fe-tb.is-lock { left: 36px; }
+  .fe-members { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+  .fe-recipe { grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 6px; }
+  .fe-rtile { padding-right: 6px; }
+  .fe-ri { width: 24px; height: 24px; }
+}

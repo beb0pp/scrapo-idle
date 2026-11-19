@@ -12,7 +12,7 @@ import { session } from '../session';
 import { heroPortraitUrl } from '../art/sprites';
 import { $, esc, icon } from './shared';
 import { ferroPanelView, handleFerroAction } from './ferroPanel';
-import { applyDock, cycleDock, dockMode, DOCK_LABEL, enableDockDrag } from './dock';
+import { applyDock, cycleDock, dockLabel, enableDockDrag, isDockKind, type DockKind } from './dock';
 import { useManaItem } from '../game/ferroController';
 import './mochila.css';
 
@@ -28,11 +28,12 @@ const playerSlots: EquipSlot[] = ['tool', 'head', 'body', 'hands', 'feet', 'acce
 
 export function onPanelChange(listener: (open: boolean) => void): void { listeners.push(listener); }
 export function panelOpen(): boolean { return openKind !== null || !$('modal').hidden; }
+const dockKind = (): DockKind | null => (isDockKind(openKind) ? openKind : null);
 export function openPanel(kind: PanelKind): void {
   openKind = kind;
   renderPanel();
   $('panel').hidden = false;
-  applyDock($('panel'), kind === 'inventory');
+  applyDock($('panel'), dockKind());
   listeners.forEach((listener) => listener(true));
 }
 
@@ -40,7 +41,7 @@ export function closePanel(): void {
   if (!openKind) return;
   openKind = null;
   $('panel').hidden = true;
-  applyDock($('panel'), false);
+  applyDock($('panel'), null);
   listeners.forEach((listener) => listener(false));
 }
 export function togglePanel(kind: PanelKind): void { if (openKind === kind) closePanel(); else openPanel(kind); }
@@ -48,8 +49,8 @@ export function onAfkStart(handler: (id: AfkAreaId) => void): void { afkStart = 
 
 export function initPanels(): void {
   $('panel').addEventListener('click', handlePanelClick);
-  enableDockDrag($('panel'), () => openKind === 'inventory');
-  window.addEventListener('resize', () => { if (openKind === 'inventory') applyDock($('panel'), true); });
+  enableDockDrag($('panel'), dockKind);
+  window.addEventListener('resize', () => { if (dockKind()) applyDock($('panel'), dockKind()); });
   window.addEventListener('scrapo:panel', (event) => togglePanel((event as CustomEvent<PanelKind>).detail));
   window.addEventListener('scrapo:tool', (event) => session.run((state) => equip(state, (event as CustomEvent<ItemId>).detail)));
   session.onChange(() => { if (openKind) renderPanel(); });
@@ -63,7 +64,7 @@ function handlePanelClick(event: MouseEvent): void {
   if (act.startsWith('f-') && handleFerroAction(at < 0 ? act : act.slice(0, at), at < 0 ? '' : act.slice(at + 1))) { renderPanel(); return; }
   const [action, value] = act.split(':');
   if (action === 'close') closePanel();
-  if (action === 'dock') { cycleDock(); renderPanel(); applyDock($('panel'), true); }
+  if (action === 'dock') { const kind = dockKind(); if (kind) { cycleDock($('panel'), kind); renderPanel(); } }
   if (action === 'select') { selected = value as ItemId; renderPanel(); }
   if (action === 'filter') { filter = value; slotFilter = null; renderPanel(); }
   if (action === 'vendor-tab') { vendorTab = value as 'buy' | 'sell'; renderPanel(); }
@@ -88,8 +89,9 @@ function renderPanel(): void {
   if (!openKind) return;
   const views: Record<PanelKind, (state: GameState) => string> = { inventory, workshop, vendor, terminal, settings, ferro: ferroPanelView };
   const titles: Record<PanelKind, string> = { inventory: 'Mochila', workshop: 'Oficina', vendor: `Mercado — ${VENDOR_NAME}`, terminal: 'Terminal de Extração', settings: 'Configurações', ferro: 'Ferromancia' };
-  const dock = openKind === 'inventory'
-    ? `<button data-act="dock" class="dock-btn" title="Mudar posição da janela (ou arraste pelo título)">⇆ ${DOCK_LABEL[dockMode()]}</button>`
+  const kind = dockKind();
+  const dock = kind
+    ? `<button data-act="dock" class="dock-btn" title="Mudar posição da janela (ou arraste pelo título)">${dockLabel(kind)}</button>`
     : '';
   $('panel').innerHTML = `<div class="panel-head"><h2>${titles[openKind]}</h2>${dock}<span class="money">${session.state.currency} cr</span>`
     + `<button data-act="close">Esc ✕</button></div><div class="panel-body">${views[openKind](session.state)}</div>`;
