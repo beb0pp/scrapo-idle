@@ -19,7 +19,7 @@ import { RoboDog } from '../game/dog';
 import { FerroController, ferroApi } from '../game/ferroController';
 import { YardDecor } from '../game/yardDecor';
 import { PILE_RESPAWN_MS, session } from '../session';
-import { closePanel, hudFrame, modal, onSkillClick, openPanel, panelOpen, showHud, toast } from '../ui/ui';
+import { closePanel, hudFrame, modal, onActionClick, onSkillClick, openPanel, panelOpen, showHud, toast } from '../ui/ui';
 import { showAreaBanner } from '../ui/banner';
 import { setMinimap, setMinimapEnemies, setMinimapPlayer, setMinimapView, TERRAIN_CLASS, type MinimapData } from '../ui/minimap';
 
@@ -264,6 +264,12 @@ export class WorldScene extends Phaser.Scene {
 
     this.keys = this.input.keyboard!.addKeys('UP,DOWN,LEFT,RIGHT,SPACE,Q,W,E,R,F') as Record<string, Phaser.Input.Keyboard.Key>;
     onSkillClick((i) => [() => this.pulse(), () => this.arc(), () => this.dash(), () => this.overdrive()][i]());
+    onActionClick((action) => {
+      if (this.frozen || this.transitioning) return;
+      this.lastManual = this.time.now;
+      if (action === 'attack') this.attack(this.time.now);
+      else this.nearestInteractable()?.act();
+    });
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onPointerDown(p));
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.onPointerMove(p));
     this.arrivedAt = this.time.now;
@@ -280,6 +286,7 @@ export class WorldScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       offState();
       onSkillClick(() => {});
+      onActionClick(() => {});
       closePanel();
       showHoverTip(null, undefined);
     });
@@ -494,7 +501,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.frozen || this.transitioning) {
       if (!world.isPaused) world.pause();
       this.anims.pauseAll();
-      hudFrame({ area: this.areaName, cooldowns: [0, 0, 0, 0], prompt: null, boss: null });
+      hudFrame({ area: this.areaName, cooldowns: [0, 0, 0, 0], prompt: null, interact: null, boss: null });
       if (!this.transitioning) this.autoPlay(time);
       return;
     }
@@ -935,10 +942,12 @@ export class WorldScene extends Phaser.Scene {
     this.hudAt = time;
     const frac = (key: keyof typeof COOLDOWN) => Math.max(0, (this.ready[key] - time) / COOLDOWN[key]);
     const crane = this.crane;
+    const interact = this.searching ? null : (this.nearestInteractable()?.label() ?? null);
     hudFrame({
       area: this.areaName,
       cooldowns: [frac('pulse'), frac('arc'), frac('dash'), this.drone ? frac('overdrive') : 1],
-      prompt: this.searching ? 'Vasculhando…' : (this.nearestInteractable()?.label() ?? null),
+      prompt: this.searching ? 'Vasculhando…' : interact,
+      interact,
       boss: crane && crane.active ? { hp: crane.hp, max: crane.maxHp } : null,
     });
   }

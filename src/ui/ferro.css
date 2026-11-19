@@ -172,9 +172,9 @@ kbd { font: inherit; color: var(--amber); background: var(--panel-2); border: 2p
 .fe-sstat.fe-reforco small { color: #ffd27a; font-size: 9px; }
 
 /* HUD spellbar */
-.spellbar { position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
-/* #prompt lives outside #hud: lift it above the spell bar (90 + 58 + gap) */
-body:has(#spellbar) #prompt { bottom: 156px; }
+.spellbar { position: absolute; bottom: calc(var(--hud-bottom-h, 70px) + 20px); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+/* #prompt lives outside #hud: lift it above the spell bar (bar + 58 + gaps) */
+body:has(#spellbar) #prompt { bottom: calc(var(--hud-bottom-h, 70px) + 86px); }
 .spell-slot { position: relative; width: 70px; height: 50px; padding: 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; background: rgba(27, 26, 36, 0.9); border-color: var(--ether-dk, #5b3f86); overflow: hidden; }
 .spell-slot b { position: absolute; top: 1px; left: 4px; color: #b48ae6; font-size: 12px; }
 .spell-slot span { font-size: 9px; line-height: 1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -211,7 +211,7 @@ body:has(#spellbar) #prompt { bottom: 156px; }
 }
 
 @media (max-width: 640px) {
-  .spellbar { bottom: 80px; gap: 4px; }
+  .spellbar { bottom: calc(var(--hud-bottom-h, 64px) + 16px); gap: 4px; }
   .spell-slot { width: 58px; }
   .ferro-btn { min-width: 64px; }
   .fe-recipe { grid-template-columns: 1fr auto; }
