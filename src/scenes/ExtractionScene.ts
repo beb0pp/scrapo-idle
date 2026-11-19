@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TILES } from '../art/tileArt';
+import { attachDroneParts } from '../art/droneParts';
 import { computeProgress } from '../core/afk';
 import type { ItemBag, ItemId } from '../data/items';
 import { session } from '../session';
@@ -73,6 +74,7 @@ export class ExtractionScene extends Phaser.Scene {
     this.add.sprite(this.bin.x - 22, this.bin.y + 2, 'terminal', 0).play('terminal-blink').setDepth(this.bin.y);
     this.piles = L.piles.map(([x, y]) => this.add.sprite(x * T + 8, y * T + 8, 'pile', 0).play('pile-glint').setDepth(y * T));
     this.drone = this.add.sprite(this.bin.x, this.bin.y - 14, 'drone', 0).play('drone-fly').setDepth(5000);
+    attachDroneParts(this, this.drone, session.state);
     this.carry = this.add.image(0, 0, 'icon_scrap').setScale(0.5).setDepth(4999).setVisible(false);
     this.sparks = this.add.graphics().setDepth(5001);
     this.lastLoot = computeProgress(afk, Date.now()).loot;
