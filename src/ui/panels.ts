@@ -1,3 +1,4 @@
+import { GEAR_LAYERS, gearPortraitUrl, hasGearArt } from '../art/heroGear';
 import { levelOf } from '../core/mana';
 import { availableAreas, computeProgress } from '../core/afk';
 import { afkRareFactor, droneCapacity, droneReady, playerStats } from '../core/derived';
@@ -163,7 +164,7 @@ function slotTile(state: GameState, slot: EquipSlot): string {
 function paperDoll(state: GameState): string {
   return `<div class="mo-doll">
     ${playerSlots.map((slot) => slotTile(state, slot)).join('')}
-    <div class="mo-stage"><img class="mo-hero" src="${heroPortraitUrl}" alt="Personagem">${levelPlate(state)}</div>
+    <div class="mo-stage"><span class="mo-hero-wrap"><img class="mo-hero" src="${heroPortraitUrl}" alt="Personagem">${GEAR_LAYERS.map((slot) => state.equipped[slot]).filter(hasGearArt).map((id) => `<img class="mo-hero-gear" src="${gearPortraitUrl(id)}" alt="">`).join('')}</span>${levelPlate(state)}</div>
   </div>`;
 }
 

@@ -208,11 +208,11 @@ export function salvageHit(scene: Phaser.Scene, at: Pt): void {
   puffs(scene, p, 1);
 }
 
-const PIXEL_FONT = 'Pixelify Sans';
-// Pixelify's 5/8/9 blur together at small sizes; numbers use a plain bold face that keeps them distinct
+const TEXT_FONT = 'Pixelify Sans';
+// numbers use DIGIT_FONT (below); labels and callouts keep the game's pixel face
 const DIGIT_FONT = 'Verdana, "Trebuchet MS", sans-serif';
 
-function floatingText(scene: Phaser.Scene, at: Pt, text: string, color: string, size: number, rise: number, font = PIXEL_FONT): void {
+function floatingText(scene: Phaser.Scene, at: Pt, text: string, color: string, size: number, rise: number, font = TEXT_FONT): void {
   const t = scene.add
     .text(at.x, at.y, text, { fontFamily: font, fontStyle: 'bold', fontSize: `${size * 2}px`, color, stroke: '#0c0a12', strokeThickness: 4 })
     .setOrigin(0.5, 1)
@@ -237,12 +237,13 @@ export function lootPopup(scene: Phaser.Scene, at: Pt, iconKey: string, text: st
   const tint = parseInt(color.slice(1), 16);
   const rare = color.toLowerCase() !== '#b8bcc4';
   scene.time.delayedCall(delay, () => {
+    // laid out in screen pixels, then scaled by 1/zoom so the label reads the same at every zoom
     const label = scene.add
-      .text(8, 0, text, { fontFamily: 'Pixelify Sans', fontSize: '8px', color, stroke: '#1b1a24', strokeThickness: 3 })
-      .setOrigin(0, 0.5)
-      .setResolution(4);
-    const icon = scene.add.image(0, 0, iconKey).setScale(0.75);
-    const box = scene.add.container(at.x - (label.width + 12) / 2, at.y, [icon, label]).setDepth(FX + 3).setAlpha(0);
+      .text(12, 0, text, { fontFamily: TEXT_FONT, fontStyle: 'bold', fontSize: '13px', color, stroke: '#0c0a12', strokeThickness: 3 })
+      .setOrigin(0, 0.5);
+    const icon = scene.add.image(0, 0, iconKey);
+    const fit = 1 / scene.cameras.main.zoom;
+    const box = scene.add.container(at.x - ((label.width + 18) / 2) * fit, at.y, [icon, label]).setScale(fit).setDepth(FX + 3).setAlpha(0);
     scene.tweens.add({ targets: box, alpha: 1, y: at.y - 10, duration: 180, ease: 'Back.easeOut' });
     scene.tweens.add({ targets: box, alpha: 0, y: at.y - 26, delay: 1300, duration: 500, ease: 'Quad.easeIn', onComplete: () => box.destroy() });
     if (rare) {

@@ -5,6 +5,9 @@ import { addItems } from '../core/state';
 import { DECALS, TILES } from '../art/tileArt';
 import { PILE_TABLES } from '../data/areas';
 import { ITEMS, RARITY, rarityOf, type ItemBag, type ItemId } from '../data/items';
+import { attachDogParts, dogPartsFor } from '../art/dogParts';
+import { attachDroneParts, dronePartsFor } from '../art/droneParts';
+import { GEAR_LAYERS, gearTexture, hasGearArt } from '../art/heroGear';
 import { Crane, Enemy, type EnemyKind, type Target } from '../game/enemies';
 import { findPath, nearestFree, simplify } from '../game/pathfind';
 import * as vfx from '../game/vfx';
@@ -144,6 +147,10 @@ export class WorldScene extends Phaser.Scene {
   private craneIntroShown = false;
   private order: Order | null = null;
   private action: { key: string; until: number } | null = null;
+  private gear: Phaser.GameObjects.Sprite[] = [];
+  private droneLook = '';
+  private dogLook = '';
+  private removeDogParts: (() => void) | null = null;
   private shadow!: Phaser.GameObjects.Ellipse;
   private heroRing!: Phaser.GameObjects.Ellipse;
   private lastHurt = 0;
@@ -255,7 +262,13 @@ export class WorldScene extends Phaser.Scene {
     if (this.mapId === 'patio') session.hp = session.maxHp;
     showHud(true);
     showAreaBanner(this.areaName, AREA_SUBTITLE[this.mapId]);
-    const offState = session.onChange(() => this.syncDrone());
+    this.syncGear();
+    this.syncDogLook();
+    const offState = session.onChange(() => {
+      this.syncDrone();
+      this.syncGear();
+      this.syncDogLook();
+    });
     this.events.once('shutdown', () => {
       offState();
       onSkillClick(() => {});
@@ -427,7 +440,8 @@ export class WorldScene extends Phaser.Scene {
   private syncDrone(): void {
     const ready = droneReady(session.state);
     const wantsAura = ready && session.state.equipped.module === 'mod_magnet';
-    if (this.drone && ready && wantsAura === !!this.droneAura) return;
+    const look = dronePartsFor(session.state).join(',');
+    if (this.drone && ready && wantsAura === !!this.droneAura && look === this.droneLook) return;
     const fresh = ready && !this.drone;
     this.drone?.destroy();
     this.droneAura?.destroy();
@@ -443,6 +457,8 @@ export class WorldScene extends Phaser.Scene {
   private spawnDrone(): void {
     if (!droneReady(session.state)) return;
     this.drone = this.add.sprite(this.player.x - 16, this.player.y - 18, 'drone', 0).play('drone-fly').setDepth(5500);
+    attachDroneParts(this, this.drone, session.state);
+    this.droneLook = dronePartsFor(session.state).join(',');
     if (session.state.equipped.module === 'mod_magnet') {
       this.droneAura = this.add.circle(this.drone.x, this.drone.y, 9, 0x5fd0d8, 0.18).setStrokeStyle(1, 0x5fd0d8, 0.6).setDepth(5499);
     }
@@ -516,6 +532,32 @@ export class WorldScene extends Phaser.Scene {
     this.shadow.setPosition(this.feetX, this.feetY + 1).setDepth(this.feetY - 1);
     this.heroRing.setPosition(this.feetX, this.feetY + 1).setDepth(this.feetY - 1.5);
     this.animateHero(time);
+    // equipped gear is drawn as aligned overlay sheets that copy the hero's frame every tick
+    this.gear.forEach((g, i) => {
+      g.setPosition(p.x, p.y).setOrigin(p.originX, p.originY).setScale(p.scaleX, p.scaleY).setFlipX(p.flipX);
+      g.setFrame(p.frame.name).setDepth(p.depth + 0.01 * (i + 1)).setAlpha(p.alpha);
+      if (p.isTinted) g.setTint(p.tintTopLeft);
+      else g.clearTint();
+    });
+  }
+
+  /** Ferrugem's role and progress overlays; rebuilt only when the look changes. */
+  private syncDogLook(): void {
+    const parts = dogPartsFor(session.state);
+    const look = parts.join(',');
+    if (look === this.dogLook && this.removeDogParts) return;
+    this.removeDogParts?.();
+    this.removeDogParts = attachDogParts(this, this.dog.sprite, parts);
+    this.dogLook = look;
+  }
+
+  /** Rebuilds the gear overlays when the equipment changes. */
+  private syncGear(): void {
+    const want = GEAR_LAYERS.map((slot) => session.state.equipped[slot]).filter(hasGearArt);
+    const have = this.gear.map((g) => g.texture.key);
+    if (want.length === have.length && want.every((id, i) => gearTexture(id) === have[i])) return;
+    this.gear.forEach((g) => g.destroy());
+    this.gear = want.map((id) => this.add.sprite(this.player.x, this.player.y, gearTexture(id), 0));
   }
 
   /** One-shot body animation (attack, cast, hurt) that wins over walk/idle until it ends. */

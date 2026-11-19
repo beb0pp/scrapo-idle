@@ -385,3 +385,7 @@
   #panel .mochila .mo-stage { width: 120px; min-height: 132px; }
   #panel .mochila .mo-hero { width: 64px; height: 72px; }
 }
+
+/* gear overlays stacked exactly over the portrait */
+#panel .mochila .mo-hero-wrap { position: relative; display: inline-block; line-height: 0; }
+#panel .mochila .mo-hero-gear { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
