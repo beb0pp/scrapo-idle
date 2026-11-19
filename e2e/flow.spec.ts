@@ -132,6 +132,8 @@ test('a version 1 save from an earlier build still loads', async ({ page }) => {
 test('auto keeps exploring while a panel is open', async ({ page }) => {
   const errors = trackErrors(page);
   await enterGame(page);
+  // the first-wagon story modal would close the backpack mid-test
+  await page.evaluate(() => (window as any).__scrapo.session.mutate((s: any) => { s.flags.first_wagon_looted = true; }));
   await warp(page, 'yard');
   await tap(page, 't');
   await page.waitForTimeout(2000);
