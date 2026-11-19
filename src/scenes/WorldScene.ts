@@ -277,6 +277,7 @@ export class WorldScene extends Phaser.Scene {
       offState();
       onSkillClick(() => {});
       closePanel();
+      showHoverTip(null, undefined);
     });
   }
 
@@ -649,6 +650,7 @@ export class WorldScene extends Phaser.Scene {
     const it = this.enemyAt(w) ? null : this.interactableAt(w);
     canvas.style.cursor = this.enemyAt(w) ? 'crosshair' : it ? 'pointer' : 'default';
     this.setHovered(it?.sprite ?? null);
+    showHoverTip(it && !panelOpen() ? it.label() : null, p.event as MouseEvent);
     if (p.leftButtonDown() && this.order?.kind === 'move' && this.time.now - this.holdMoveAt > 160 && !panelOpen()) {
       this.holdMoveAt = this.time.now;
       this.moveTo(w, false);
@@ -1491,4 +1493,22 @@ export class WorldScene extends Phaser.Scene {
   warp(mapId: MapId, entry = 'default'): void {
     this.scene.restart({ mapId, entry });
   }
+}
+
+/** Floating name of what is under the mouse, so two look-alike props can be told apart. */
+function showHoverTip(label: string | null, ev: MouseEvent | undefined): void {
+  let tip = document.getElementById('hover-tip');
+  if (!label || !ev) {
+    if (tip) tip.hidden = true;
+    return;
+  }
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'hover-tip';
+    document.body.appendChild(tip);
+  }
+  tip.textContent = label.replace(/^F\s*—\s*/, '');
+  tip.style.left = `${ev.clientX + 14}px`;
+  tip.style.top = `${ev.clientY + 16}px`;
+  tip.hidden = false;
 }

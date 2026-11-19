@@ -232,7 +232,7 @@ button.primary { background: #6d4a12; border-color: var(--amber); }
 .panel-head .x { padding: 2px 8px; }
 .panel-body { overflow: auto; padding: 10px 12px 14px; }
 .panel-body h3 { margin: 6px 0; font-size: 14px; color: var(--amber); }
-.row, .drone-box { display: flex; gap: 10px; align-items: center; padding: 6px; border-bottom: 1px solid var(--line); }
+.row { display: flex; gap: 10px; align-items: center; padding: 6px; border-bottom: 1px solid var(--line); }
 .grow { flex: 1; min-width: 0; }
 .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .desc { font-size: 13px; color: var(--muted); }
@@ -245,17 +245,32 @@ button.primary { background: #6d4a12; border-color: var(--amber); }
 .slot { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; border: 2px dashed var(--line); font-size: 12px; text-align: center; }
 .slot.full { border-style: solid; border-color: var(--cyan); }
 .slot button { padding: 1px 6px; font-size: 11px; }
-.recipes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px; margin-top: 8px; }
-.recipe { border: 2px solid var(--line); padding: 8px; background: var(--panel-2); }
-.recipe.ready { border-color: var(--amber); }
-.r-head { display: flex; gap: 8px; align-items: center; }
-.r-head b { flex: 1; }
-.inputs { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
-.need { font-size: 12px; padding: 1px 4px; border: 1px solid var(--line); }
-.need.ok { color: var(--green); } .need.lack { color: var(--red); }
-.status { font-size: 12px; color: var(--amber); margin-top: 4px; }
-.drone-box { border: 2px solid var(--cyan); }
+.recipes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 10px; margin-top: 10px; }
+.recipe, .drone-box { border: 2px solid var(--line); padding: 10px 12px; background: var(--panel-2); min-width: 0; }
+.drone-box { display: block; border-color: var(--cyan); }
 .drone-box.broken { border-color: var(--red); }
+.recipe.ready { border-color: var(--green); }
+.recipe.built { opacity: 0.72; }
+.r-head { display: flex; gap: 10px; align-items: center; }
+.r-head .grow { display: flex; flex-direction: column; gap: 2px; }
+.r-head b { font-size: 16px; line-height: 1.2; }
+.r-head button { flex: none; font-size: 15px; padding: 6px 14px; }
+.r-state { font-size: 13px; color: var(--amber); }
+.recipe.ready .r-state { color: var(--green); }
+.recipe.built .r-state, .drone-box .r-state { color: var(--cyan); }
+.recipe.locked .r-state, .drone-box.broken .r-state { color: var(--red); }
+.r-effect { margin: 8px 0 0; font-size: 14px; line-height: 1.4; color: var(--text); }
+.r-label { margin: 10px 0 4px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.needs { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.needs li { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center; padding: 3px 6px; font-size: 14px; background: rgba(0, 0, 0, 0.18); border-left: 3px solid var(--green); }
+.needs li.lack { border-left-color: var(--red); }
+.needs .n-qty { font-weight: bold; }
+.needs .n-have { font-size: 12px; color: var(--green); min-width: 64px; text-align: right; }
+.needs li.lack .n-have { color: var(--red); }
+.d-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.d-stat { display: flex; flex-direction: column; padding: 4px 8px; font-size: 15px; background: rgba(0, 0, 0, 0.18); }
+.d-stat small { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.drone-box .acts { margin-top: 8px; justify-content: flex-start; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .npc { font-style: italic; color: var(--muted); margin-top: 0; }
 .hint { font-size: 12px; color: var(--muted); }
@@ -718,3 +733,7 @@ body[data-panel-dock='left'] #objective { opacity: 0; }
 /* drone badge and toasts sit above the footer so they never cover the Mercado button */
 .drone-badge { bottom: 92px; }
 #toasts { bottom: 130px; }
+
+#hover-tip { position: fixed; z-index: 60; pointer-events: none; padding: 3px 8px; font-size: 14px; color: var(--text); background: var(--panel); border: 2px solid var(--amber); box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); white-space: nowrap; }
+#hover-tip[hidden] { display: none; }
+body:has(#panel:not([hidden])) #hover-tip, body:has(#modal:not([hidden])) #hover-tip { display: none; }
