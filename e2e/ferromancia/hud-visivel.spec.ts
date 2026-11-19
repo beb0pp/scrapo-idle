@@ -34,6 +34,15 @@ test('cada ação nova tem botão visível com o atalho à mostra', async ({ pag
   await expect(page.getByRole('button', { name: 'Atacar (Espaço)' })).toBeEnabled();
 });
 
+test('clicar num botão do HUD não deixa foco nele, então Espaço não o clica de novo', async ({ page }) => {
+  for (const selector of ['#auto-btn', '.skill.map-btn', '#minimap-map-btn']) {
+    await page.locator(selector).click();
+    expect(await page.evaluate(() => !!document.activeElement?.closest('#hud button'))).toBe(false);
+    await page.keyboard.press('Escape');
+  }
+  await expect(page.locator('#auto-btn')).toHaveClass(/is-on/);
+});
+
 test('botão de mapa do minimapa abre o Mapa de caça, não o mapa regional', async ({ page }) => {
   await page.locator('#minimap-map-btn').click();
   await expect(panelTitle(page)).toHaveText('Mapa');
