@@ -4,7 +4,7 @@ import { ELEMENT_IDS, ELEMENTS, type ElementId } from '../data/elements';
 import { ENEMY_INFO, ENEMY_KINDS, type EnemyKind } from '../data/enemies';
 import { REGIONS, areaById, areasIn, regionById, type HuntArea, type Region } from '../data/hunt';
 import { session } from '../session';
-import { travelToArea } from '../travel';
+import { currentHuntArea, travelToArea } from '../travel';
 import { elementChip } from './elementChip';
 import { paintRegionMap } from './mapCanvas';
 import { detailCard, footer, listTable, marker, MODE_HELP, MODE_LABEL, regionTabs, tipCard } from './mapMarkup';
@@ -111,7 +111,7 @@ function refresh(): void {
   root.querySelectorAll<HTMLElement>('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === ui.view)));
   root.dataset.layout = ui.view;
   if (ui.view === 'map') renderMap(r, all, shown, level);
-  else q('.mapw-list').innerHTML = listTable(sortAreas(shown, ui.sort.key, ui.sort.dir), level, ui.sort);
+  else q('.mapw-list').innerHTML = listTable(sortAreas(shown, ui.sort.key, ui.sort.dir), level, ui.sort, currentHuntArea());
   q('.mapw-foot').textContent = footer(shown.length, all.length, r, ui.view);
   if (focusKey) root.querySelector<HTMLElement>(`[data-fk="${CSS.escape(focusKey)}"]`)?.focus();
 }
@@ -153,7 +153,8 @@ function renderMap(r: Region, all: HuntArea[], shown: HuntArea[], level: number)
     paintedRegion = r.id;
     ui.selected = null;
   }
-  q('.mapw-marks').innerHTML = shown.map((a) => marker(a, level, a.id === ui.selected)).join('');
+  const here = currentHuntArea();
+  q('.mapw-marks').innerHTML = shown.map((a) => marker(a, level, a.id === ui.selected, a.id === here)).join('');
   const picked = ui.selected ? areaById(ui.selected) : undefined;
   const card = q('.mapw-card');
   card.hidden = !picked;

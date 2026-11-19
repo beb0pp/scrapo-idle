@@ -115,3 +115,10 @@
   .mapw-views { flex-basis: auto; }
   .mapw-col-size { display: none; }
 }
+
+/* "Caçando": the area the hero is in right now */
+.mapw-here { display: inline-block; padding: 0 4px; font-size: 10px; line-height: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink); background: var(--green); border: 2px solid var(--mapw-ink); white-space: nowrap; pointer-events: none; }
+.mapw-mark.is-here::before { content: ''; position: absolute; inset: -9px; border: 2px dashed var(--green); border-radius: 50%; pointer-events: none; }
+.mapw-mark .mapw-here { position: absolute; left: 50%; bottom: calc(100% + 12px); transform: translateX(-50%); }
+.mapw-table tr.is-here { background: rgba(143, 209, 106, 0.12); box-shadow: inset 3px 0 0 var(--green); }
+.mapw-table tr.is-here .mapw-here { margin-left: 6px; vertical-align: 1px; }

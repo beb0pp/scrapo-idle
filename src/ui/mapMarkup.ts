@@ -44,13 +44,16 @@ function enemyRows(area: HuntArea): string {
   return area.enemies.map((k) => `<li>${enemyIcon(k)}<span>${esc(ENEMY_INFO[k].name)}</span>${elementChip(ENEMY_INFO[k].element)}</li>`).join('');
 }
 
-export function marker(area: HuntArea, heroLevel: number, selected: boolean): string {
+const HERE_BADGE = '<span class="mapw-here">Caçando</span>';
+
+/** `hunting`: the hero is in this area right now. */
+export function marker(area: HuntArea, heroLevel: number, selected: boolean, hunting = false): string {
   const main = area.enemies[0];
   const above = area.level > heroLevel;
-  const cls = `mapw-mark${above ? ' is-above' : ''}${selected ? ' is-sel' : ''}`;
-  const label = `${area.name}, Nv ${area.level}${above ? ', acima do seu nível' : ''}`;
+  const cls = `mapw-mark${above ? ' is-above' : ''}${selected ? ' is-sel' : ''}${hunting ? ' is-here' : ''}`;
+  const label = `${area.name}, Nv ${area.level}${above ? ', acima do seu nível' : ''}${hunting ? ', caçando aqui' : ''}`;
   return `<button class="${cls}" data-area="${area.id}" data-fk="mark:${area.id}" style="left:${area.pos.x * 100}%;top:${area.pos.y * 100}%;--el:${ELEMENTS[ENEMY_INFO[main].element].color}" aria-label="${esc(label)}" aria-pressed="${selected}">`
-    + `${enemyIcon(main, 'mapw-mico')}<b class="mapw-lvl">${area.level}</b>${above ? `<i class="mapw-lock">${LOCK}</i>` : ''}</button>`;
+    + `${enemyIcon(main, 'mapw-mico')}<b class="mapw-lvl">${area.level}</b>${above ? `<i class="mapw-lock">${LOCK}</i>` : ''}${hunting ? HERE_BADGE : ''}</button>`;
 }
 
 export function tipCard(area: HuntArea, heroLevel: number): string {
@@ -75,7 +78,8 @@ export function detailCard(area: HuntArea, heroLevel: number): string {
 
 const COLUMNS: [SortKey, string][] = [['name', 'Área'], ['level', 'Nv'], ['enemies', 'Inimigos'], ['size', 'Tamanho']];
 
-export function listTable(areas: readonly HuntArea[], heroLevel: number, sort: { key: SortKey; dir: SortDir }): string {
+/** `huntingId`: area the hero is in right now, highlighted as "Caçando". */
+export function listTable(areas: readonly HuntArea[], heroLevel: number, sort: { key: SortKey; dir: SortDir }, huntingId: string | null = null): string {
   const head = COLUMNS.map(([key, label]) => {
     const on = sort.key === key;
     const aria = on ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
@@ -84,7 +88,9 @@ export function listTable(areas: readonly HuntArea[], heroLevel: number, sort: {
   const rows = areas.map((a) => {
     const above = a.level > heroLevel;
     const enemies = a.enemies.map((k) => `<span class="mapw-ecell" title="${esc(ENEMY_INFO[k].name)}">${enemyIcon(k)}${elementChip(ENEMY_INFO[k].element)}</span>`).join('');
-    return `<tr class="${above ? 'is-above' : ''}" data-row="${a.id}"><td class="mapw-col-name">${esc(a.name)}</td><td class="mapw-col-level">${above ? LOCK : ''}${a.level}</td>`
+    const here = a.id === huntingId;
+    const cls = [above ? 'is-above' : '', here ? 'is-here' : ''].filter(Boolean).join(' ');
+    return `<tr class="${cls}" data-row="${a.id}"><td class="mapw-col-name">${esc(a.name)}${here ? HERE_BADGE : ''}</td><td class="mapw-col-level">${above ? LOCK : ''}${a.level}</td>`
       + `<td class="mapw-col-enemies">${enemies}</td><td class="mapw-col-size">${SIZE_LABEL[a.size]}</td>`
       + `<td>${goButton(a, heroLevel, 'mapw-go')}</td></tr>`;
   }).join('');

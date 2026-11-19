@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { combatLockMs, combatLockSeconds, type CombatTimes } from './core/combatLock';
 import { generateArea } from './core/huntGen';
 import { huntTiledMap } from './core/huntMap';
 import { areaById, areaUnlocked, regionOf, regionUnlocked } from './data/hunt';
@@ -14,7 +15,21 @@ export function bindTravel(g: Phaser.Game): void {
   game = g;
 }
 
-/** Enters a hunt area. Refuses (with a toast) when the region or area is above the hero's level or an extraction is running. */
+interface HuntWorld { huntAreaId(): string | null; combatTimes(): CombatTimes & { now: number } }
+
+/** Running World scene while the hero is inside a hunt area, else null. */
+function huntWorld(): HuntWorld | null {
+  if (!game?.scene.isActive('World')) return null;
+  const w = game.scene.getScene('World') as unknown as HuntWorld;
+  return w.huntAreaId() ? w : null;
+}
+
+/** Hunt area the hero is in right now ("Caçando"), or null. */
+export function currentHuntArea(): string | null {
+  return huntWorld()?.huntAreaId() ?? null;
+}
+
+/** Enters a hunt area. Refuses (with a toast) when the region or area is above the hero's level, an extraction is running or the hero is mid-fight in a hunt. */
 export function travelToArea(areaId: string): boolean {
   const area = areaById(areaId);
   if (!game || !area) return false;
@@ -30,6 +45,15 @@ export function travelToArea(areaId: string): boolean {
   if (session.state.afk) {
     toast('Encerre a extração antes de viajar.', 'warn');
     return false;
+  }
+  const hunt = huntWorld();
+  if (hunt) {
+    const { now, ...times } = hunt.combatTimes();
+    const wait = combatLockMs(now, times);
+    if (wait > 0) {
+      toast(`Espere ${combatLockSeconds(wait)}s sem tomar nem dar dano.`, 'warn');
+      return false;
+    }
   }
   const maps = game.cache.tilemap;
   if (maps.exists(HUNT_MAP_KEY)) maps.remove(HUNT_MAP_KEY);
