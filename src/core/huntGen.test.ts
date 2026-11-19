@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BLOCKING, TILES } from '../art/tileArt';
 import { PILE_TABLES } from '../data/areas';
 import { ENEMY_KINDS } from '../data/enemies';
-import { AREAS, REGIONS, areaById, areaElements, areasIn, regionOf, regionUnlocked, type AreaSize, type HuntArea } from '../data/hunt';
+import { AREAS, REGIONS, areaById, areaElements, areasIn, areaUnlocked, regionOf, regionUnlocked, type AreaSize, type HuntArea } from '../data/hunt';
 import { floodDistances, generateArea, SIZES } from './huntGen';
 import { huntTiledMap } from './huntMap';
 import { xpAt } from './level';
@@ -52,6 +52,15 @@ describe('hunt data', () => {
     s.xp = xpAt(10);
     expect(regionUnlocked(s, REGIONS[1])).toBe(true);
     expect(regionUnlocked(s, REGIONS[2])).toBe(false);
+  });
+
+  it('unlocks an area only from its own level, even inside an open region', () => {
+    const s = newGame(0);
+    expect(areaUnlocked(s, areaById('valas_de_lata')!)).toBe(true);
+    expect(areaUnlocked(s, areaById('corrego_ferro_velho')!)).toBe(false);
+    s.xp = xpAt(2);
+    expect(areaUnlocked(s, areaById('corrego_ferro_velho')!)).toBe(true);
+    expect(areaUnlocked(s, areaById('trilho_torto')!)).toBe(false);
   });
 });
 

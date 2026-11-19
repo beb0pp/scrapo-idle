@@ -120,3 +120,7 @@ export function areaElements(a: HuntArea): ElementId[] {
 export function regionUnlocked(state: GameState, region: Region): boolean {
   return levelOf(state).level >= region.minLevel;
 }
+
+export function areaUnlocked(state: GameState, a: HuntArea): boolean {
+  return levelOf(state).level >= a.level && regionUnlocked(state, regionOf(a));
+}
