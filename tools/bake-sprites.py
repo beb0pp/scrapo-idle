@@ -47,14 +47,43 @@ def compose(frame: tuple[int, int], parts: list) -> Image.Image:
     return out
 
 
+HAIR_DARK, HAIR_MID = (59, 49, 62, 255), (89, 78, 90, 255)
+
+
+def back_view(base: Image.Image) -> Image.Image:
+    """Seen from behind: the face area becomes the back of the hair, then the art is mirrored."""
+    out = base.copy()
+    px = out.load()
+    for y in range(6, 25):
+        for x in range(10, 31):
+            r, g, b, a = px[x, y]
+            if not a:
+                continue
+            skin = r > 170 and g > 110 and b < 175 and r - b > 60
+            eye = (g > 140 and b > 140 and r < 140) or (r < 40 and b > r + 30)
+            white = r > 190 and g > 170 and b > 150
+            if skin or eye or white:
+                px[x, y] = HAIR_MID if (x + y) % 3 else HAIR_DARK
+    return out.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+
+
 def hero_frames() -> list[Image.Image]:
     base = Image.open(SRC / 'hero_base.png').convert('RGBA')
-    wrench = region(base, lambda x, y: x >= 34 and y <= 43)
-    upper = region(base, lambda x, y: y < 50 and not (x >= 34 and y <= 43))
-    leg_l = region(base, lambda x, y: y >= 50 and x < 21)
-    leg_r = region(base, lambda x, y: y >= 50 and x >= 21)
+    front = build_hero(base)
+    back = build_hero(back_view(base), wrench_side='left')
+    # 0-14 front set, 15-19 back set (idle, walk x4)
+    return front + [back[0], back[2], back[3], back[4], back[5]]
+
+
+def build_hero(base: Image.Image, wrench_side: str = 'right') -> list[Image.Image]:
+    in_wrench = (lambda x, y: x >= 34 and y <= 43) if wrench_side == 'right' else (lambda x, y: x <= 14 and y <= 43)
+    wrench = region(base, in_wrench)
+    upper = region(base, lambda x, y: y < 50 and not in_wrench(x, y))
+    mid = 21 if wrench_side == 'right' else 28
+    leg_l = region(base, lambda x, y: y >= 50 and x < mid)
+    leg_r = region(base, lambda x, y: y >= 50 and x >= mid)
     W, U, L, R = (place(p, HERO_FRAME, HERO_AT) for p in (wrench, upper, leg_l, leg_r))
-    pv = WRENCH_PIVOT
+    pv = WRENCH_PIVOT if wrench_side == 'right' else (49 - 1 - 35 + HERO_AT[0], 36 + HERO_AT[1])
 
     def pose(up=(0, 0), wr=(0, 0, 0), ll=(0, 0), lr=(0, 0)) -> Image.Image:
         return compose(HERO_FRAME, [

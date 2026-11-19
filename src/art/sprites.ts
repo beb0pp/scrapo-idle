@@ -490,6 +490,8 @@ export function buildSprites(scene: Phaser.Scene): void {
   // public/sprites/hero.png, baked by tools/bake-sprites.py (frame order documented there)
   anim('hero-idle', 'hero', [0, 0, 1, 1], 3);
   anim('hero-walk', 'hero', [2, 3, 4, 5], 9);
+  anim('hero-idle-up', 'hero', [15], 1);
+  anim('hero-walk-up', 'hero', [16, 17, 18, 19], 9);
   once('hero-attack', 'hero', [6, 7, 8], 20);
   anim('hero-collect', 'hero', [9, 10], 1000 / 120);
   once('hero-hurt', 'hero', [11], 6);

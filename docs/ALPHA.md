@@ -28,9 +28,21 @@ O E2E usa o Chrome instalado (`channel: 'chrome'`), cada teste tem `localStorage
 | Ambiente | Pedras com musgo, troncos, cogumelos, flores, cercas vivas, pisos refeitos, barra de vida com medalhão (entregue antes do alpha, na base). | `f024651` |
 | Ícones | 21 ícones de itens redesenhados no estilo da referência 08; contador de créditos pulsa ao vender. | registro final |
 | Auto (2ª rodada) | Castigo para inimigos inalcançáveis; sai de mapa esgotado. | registro final |
+| Vista de costas | Quadros 15–19 do herói gerados da arte frontal; `hero-idle-up`/`hero-walk-up` ao andar para cima. | registro final |
 | Docs | README documenta T, Auto e Ferrugem; este arquivo. | `bbdd8a3` e registro final |
 
-Arte externa: nenhum pack foi importado. As referências do usuário (`assets-src/ref/`) e a arte própria em código cobriram o alpha sem misturar estilos; não há créditos de terceiros a registrar.
+### Arte externa (busca e decisão)
+
+Busca feita em 2026-11-19 por packs CC0/CC BY de sucata e ferro-velho top-down 16x16 (OpenGameArt):
+
+| Candidato | Licença | Decisão |
+|---|---|---|
+| [Volt Scrap art](https://opengameart.org/node/173323) | CC0 | Não importado: paleta DB32 e traço de game jam destoam do herói convertido e das props com rampas de 3 tons. |
+| [Dungeon tileset com props](https://opengameart.org/node/21239) | CC0 | Não importado: tema de masmorra medieval, sem sucata. |
+| [Top-down 16x16](https://opengameart.org/node/155014) | CC0 | Não importado: sem props de sucata identificáveis. |
+| [16x16 Tiny Top Down Pack](https://opengameart.org/node/140355) | não informada na página de busca | Descartado por licença não confirmada. |
+
+Resultado: nenhum asset de terceiros entrou; toda a arte vem das referências do usuário (`assets-src/ref/`, convertidas por `tools/pixelize-ref.py` e `tools/bake-sprites.py`) ou é pintada em código. Não há créditos de terceiros a registrar. Nenhum script de pack foi baixado ou executado.
 
 ## Capturas
 
@@ -49,6 +61,7 @@ Sequência de animação conferida por amostragem dos quadros em execução: `he
 | `npm run build` | ok |
 | E2E fluxo completo (save novo): explorar → vasculhar o 1º vagão → coletar com Auto → equipar ferramenta → montar módulo e drone → iniciar extração → fechar a aba → reabrir → recolher uma vez → recarregar sem recolher de novo → vender | passou (≈40 s) |
 | E2E Q/W/E/R com recargas na masmorra | passou |
+| `npx playwright test` (suíte inteira no commit final; sessões longas opcionais ficam como skipped) | 3 passaram, 3 skipped |
 | E2E save versão 1 de build anterior | passou (migra para v2, mantém créditos e itens) |
 | Console durante os E2E | sem erros |
 | Auto, 1 min por sessão (fumaça) | 3/3; 0 travas, 0 mortes; s1 72 itens, s2 4 abates e 17 esquivas, s3 7 abates e 3 Sobrecargas |
@@ -69,7 +82,7 @@ Rodada anterior: s3 teve 2 travas (masmorra esgotada sem plano B e perseguição
 ## Pendências
 
 1. **Estilo do herói**: o usuário achou o visual infantil para o ambiente. Caminho combinado: nova referência com proporção adulta e paleta envelhecida (prompt no histórico); a conversão é automática pelos dois scripts acima.
-2. Herói só tem vista frontal (espelhada para os lados); costas e perfil dependem de uma folha de animação gerada com o mesmo personagem.
+2. Herói tem vista frontal (espelhada para os lados) e vista de costas derivada da frontal (rosto vira nuca, chave troca de lado: quadros 15–19, usados ao andar para cima). Perfil verdadeiro depende de uma folha de animação gerada com o mesmo personagem.
 3. A extração AFK conta ciclos só com a aba aberta; ao fechar, guarda os ciclos concluídos (decisão de design original, coberta pelo E2E).
 4. Inimigos novos são pequenos no zoom 2; avaliar escala depois de o usuário jogar.
 5. Em espera neste alpha: Ferromancia (sessão própria em `feat/ferromancia`), Kick e backend.

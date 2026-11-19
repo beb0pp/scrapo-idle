@@ -499,7 +499,8 @@ export class WorldScene extends Phaser.Scene {
     const body = p.body as Phaser.Physics.Arcade.Body;
     const moving = body.velocity.lengthSq() > 25;
     if (Math.abs(this.facing.x) > 0.2) p.setFlipX(this.facing.x < 0);
-    let key = moving ? 'hero-walk' : 'hero-idle';
+    const away = this.facing.y < -0.6;
+    let key = moving ? (away ? 'hero-walk-up' : 'hero-walk') : away ? 'hero-idle-up' : 'hero-idle';
     if (this.searching) key = 'hero-collect';
     if (this.action && time < this.action.until) key = this.action.key;
     else this.action = null;
