@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import { elementTint } from '../core/elements';
 import type { ElementId } from '../data/elements';
+import { scaledDmg, scaledHp } from '../core/scaling';
 import { ENEMY_INFO, type EnemyInfo, type EnemyKind } from '../data/enemies';
 
-export { killXp, type EnemyKind } from '../data/enemies';
+export type { EnemyKind } from '../data/enemies';
+export { killXp } from '../core/scaling';
 
 export interface Target {
   x: number;
@@ -58,10 +60,18 @@ export class Enemy {
   private projectile: Phaser.Physics.Arcade.Sprite | null = null;
   private projectileStart = new Phaser.Math.Vector2();
 
-  constructor(scene: Phaser.Scene, x: number, y: number, kind: EnemyKind) {
+  readonly level: number;
+  /** Only hunt-area enemies carry a level tag; the hand-made maps stay unlabelled. */
+  private readonly levelTag: Phaser.GameObjects.Text | null;
+
+  constructor(scene: Phaser.Scene, x: number, y: number, kind: EnemyKind, level?: number) {
     this.scene = scene;
     this.kind = kind;
-    this.cfg = { ...CFG[kind], ...ENEMY_INFO[kind] };
+    this.level = level ?? 1;
+    this.cfg = { ...CFG[kind], ...ENEMY_INFO[kind], hp: scaledHp(kind, this.level), dmg: scaledDmg(CFG[kind].dmg, this.level) };
+    this.levelTag = level === undefined ? null : scene.add
+      .text(x, y, `Nv ${this.level}`, { fontFamily: 'Verdana, sans-serif', fontStyle: 'bold', fontSize: '16px', color: '#e9e4d4', stroke: '#0c0a12', strokeThickness: 4 })
+      .setOrigin(0, 0.5);
     this.pipTint = elementTint(this.cfg.element);
     this.hp = this.cfg.hp;
     this.home = new Phaser.Math.Vector2(x, y);
@@ -204,6 +214,7 @@ export class Enemy {
     this.gfx.fillStyle(0x1b1a24).fillRect(this.x - 11, this.y - 13, 4, 4);
     this.gfx.fillStyle(this.pipTint).fillRect(this.x - 10, this.y - 12, 2, 2);
     this.gfx.setDepth(this.y - 1);
+    this.levelTag?.setPosition(this.x + 8, this.y - 11).setScale(0.6 / this.scene.cameras.main.zoom).setDepth(this.y);
   }
 
   private moveTo(x: number, y: number, speed: number): void {
@@ -305,6 +316,7 @@ export class Enemy {
 
   private die(): void {
     this.gfx.destroy();
+    this.levelTag?.destroy();
     this.shadow.destroy();
     (this.sprite.body as Phaser.Physics.Arcade.Body).enable = false;
     this.sprite.stop();

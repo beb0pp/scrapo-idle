@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { elementChip } from '../ui/elementChip';
 import { ADVANTAGE, ELEMENT_IDS, ELEMENTS } from '../data/elements';
-import { ENEMY_INFO, ENEMY_KINDS, killXp } from '../data/enemies';
+import { ENEMY_INFO, ENEMY_KINDS } from '../data/enemies';
+import { killXp } from './scaling';
 import { SPELLS } from '../data/ferromancy';
 import { ITEMS } from '../data/items';
 import { elementDamage, elementMul, elementTint, strongAgainst, weakTo } from './elements';

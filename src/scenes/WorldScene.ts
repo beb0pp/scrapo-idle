@@ -39,7 +39,8 @@ const AREA_SUBTITLE: Record<string, string> = {
   dungeon: 'Mini-dungeon',
 };
 
-export type MapId = 'patio' | 'yard' | 'dungeon';
+/** 'hunt' is the generated area put in the tilemap cache by travelToArea (src/travel.ts). */
+export type MapId = 'patio' | 'yard' | 'dungeon' | 'hunt';
 
 const SPEED = 82;
 /** Hero sprite is 24×32 with a centered origin; feet sit 9px below. */
@@ -109,6 +110,8 @@ export class WorldScene extends Phaser.Scene {
   private mapId: MapId = 'patio';
   private entry = 'default';
   private areaName = '';
+  /** Tiled map properties (displayName, subtitle, ambient, areaId, dropTable). */
+  private mapProps: Record<string, string> = {};
   private player!: Phaser.Physics.Arcade.Sprite;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private enemies: Enemy[] = [];
@@ -202,7 +205,8 @@ export class WorldScene extends Phaser.Scene {
     this.castShadows(map, ts, objLayer);
     this.collision = map.createLayer('collision', ts, 0, 0)!.setVisible(false);
     this.collision.setCollisionByExclusion([-1]);
-    this.areaName = String((map.properties as TiledProp[] | undefined)?.find((p) => p.name === 'displayName')?.value ?? this.mapId);
+    this.mapProps = Object.fromEntries(((map.properties as TiledProp[] | undefined) ?? []).map((p) => [p.name, String(p.value)]));
+    this.areaName = this.mapProps.displayName ?? this.mapId;
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
     const objects = map.getObjectLayer('interact')?.objects ?? [];
@@ -265,7 +269,7 @@ export class WorldScene extends Phaser.Scene {
     this.arrivedAt = this.time.now;
     if (this.mapId === 'patio') session.hp = session.maxHp;
     showHud(true);
-    showAreaBanner(this.areaName, AREA_SUBTITLE[this.mapId]);
+    showAreaBanner(this.areaName, this.mapProps.subtitle ?? AREA_SUBTITLE[this.mapId]);
     this.syncGear();
     this.syncDogLook();
     const offState = session.onChange(() => {
@@ -301,7 +305,7 @@ export class WorldScene extends Phaser.Scene {
       if (kind) markers.push({ kind, x: p.tx, y: p.ty, label: kind === 'tree' ? 'Árvore' : 'Sucata' });
     }
     const terrain = this.terrainClasses(map);
-    setMinimap({ mapId: this.mapId, name: this.areaName, widthTiles: map.width, heightTiles: map.height, blocked, terrain, markers });
+    setMinimap({ mapId: this.mapProps.areaId ?? this.mapId, name: this.areaName, widthTiles: map.width, heightTiles: map.height, blocked, terrain, markers });
   }
 
   private terrainClasses(map: Phaser.Tilemaps.Tilemap): Uint8Array {
@@ -336,7 +340,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private addLighting(map: Phaser.Tilemaps.Tilemap, objLayer: Phaser.Tilemaps.TilemapLayer): void {
-    const ambient = { patio: 0xfff0d8, yard: 0xf2d6b0, dungeon: 0x5d6584 }[this.mapId];
+    const ambient = Number(this.mapProps.ambient) || ({ patio: 0xfff0d8, yard: 0xf2d6b0, dungeon: 0x5d6584 } as Record<string, number>)[this.mapId];
     this.add.rectangle(0, 0, map.widthInPixels, map.heightInPixels, ambient).setOrigin(0).setBlendMode(Phaser.BlendModes.MULTIPLY).setDepth(7000);
     const glow = (x: number, y: number, color: number, scale: number, alpha: number) => {
       const g = this.add.image(x, y, 'glow').setTint(color).setScale(scale).setAlpha(alpha).setBlendMode(Phaser.BlendModes.ADD).setDepth(7001);
@@ -382,7 +386,7 @@ export class WorldScene extends Phaser.Scene {
         this.addPile(o.name || `pile_${c.x}_${c.y}`, c.x, c.y, prop(o, 'loot') ?? 'yard_pile', prop(o, 'special'));
         break;
       case 'enemy':
-        this.enemies.push(new Enemy(this, c.x, c.y, (prop(o, 'kind') ?? 'sorter') as EnemyKind));
+        this.enemies.push(new Enemy(this, c.x, c.y, (prop(o, 'kind') ?? 'sorter') as EnemyKind, prop(o, 'level') === null ? undefined : Number(prop(o, 'level'))));
         break;
       case 'boss':
         this.crane = new Crane(this, c.x, c.y, {
@@ -981,9 +985,10 @@ export class WorldScene extends Phaser.Scene {
     if (e.damage(n, this.player.x, this.player.y)) {
       session.mutate((s) => {
         s.stats.kills++;
-        grantXp(s, killXp(e.kind));
+        grantXp(s, killXp(e.kind, e.level));
       });
-      this.dropLoot(e.x, e.y, rollTable(Math.random, PILE_TABLES.enemy_drop.loot, 1));
+      const drops = PILE_TABLES[this.mapProps.dropTable ?? 'enemy_drop'] ?? PILE_TABLES.enemy_drop;
+      this.dropLoot(e.x, e.y, rollTable(Math.random, drops.loot, 1));
     }
   }
 

@@ -8,6 +8,7 @@ import { WorldScene } from './scenes/WorldScene';
 import { grantXp, levelOf } from './core/level';
 import { MANA_LEVEL_CAP, MANA_PER_LEVEL } from './core/mana';
 import { session } from './session';
+import { bindTravel, travelToArea } from './travel';
 import { closePanel, onAfkStart, panelOpen, toast, togglePanel } from './ui/ui';
 
 const game = new Phaser.Game({
@@ -23,6 +24,8 @@ const game = new Phaser.Game({
   disableContextMenu: true,
   scene: [BootScene, TitleScene, WorldScene, ExtractionScene],
 });
+
+bindTravel(game);
 
 session.onLevelUp((level) => toast(level <= MANA_LEVEL_CAP ? `Nível ${level}! +${MANA_PER_LEVEL} de mana máxima.` : `Nível ${level}!`, 'loot'));
 
@@ -53,6 +56,7 @@ if (import.meta.env.DEV) {
         game.scene.stop('Extraction');
         game.scene.start('World', { mapId, entry });
       },
+      travel: travelToArea,
       world: () => game.scene.getScene('World'),
       ferro: () => (game.scene.getScene('World') as unknown as { ferro: unknown }).ferro,
       level: () => levelOf(session.state),
