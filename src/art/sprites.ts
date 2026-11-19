@@ -392,18 +392,6 @@ export function buildSprites(scene: Phaser.Scene): void {
   sheet(scene, 'sorter', SORTER, BASE);
   sheet(scene, 'press', PRESS, BASE);
 
-  canvasTex(scene, 'drone', 16, 16, 2, (c, f, ox) => {
-    r(c, '#1b1a24', ox, 2, 16, 3);
-    r(c, '#c4c9cf', ox + (f ? 1 : 3), 3, 4, 1);
-    r(c, '#c4c9cf', ox + (f ? 11 : 9), 3, 4, 1);
-    r(c, '#1b1a24', ox + 7, 3, 2, 4);
-    disc(c, '#1b1a24', ox + 8, 10, 5);
-    disc(c, '#e0b33a', ox + 8, 10, 4);
-    disc(c, '#a57a1c', ox + 8, 12, 2);
-    disc(c, '#5fd0d8', ox + 8, 9, 2);
-    r(c, '#ffffff', ox + 7, 8, 1, 1);
-  });
-
   canvasTex(scene, 'crane', 40, 40, 2, (c, f, ox) => {
     r(c, '#1b1a24', ox + 4, 26, 32, 12);
     for (let x = 5; x < 35; x += 3) r(c, f ? '#4a515c' : '#5d636b', ox + x, 27, 2, 10);
@@ -482,6 +470,12 @@ export function buildSprites(scene: Phaser.Scene): void {
     canvasTex(scene, `icon_${id}`, 16, 16, 1, (c) => ICON_ART[id](c));
     iconUrls[id] = (scene.textures.get(`icon_${id}`).getSourceImage() as HTMLCanvasElement).toDataURL();
   }
+  // the drone icon is baked with its sprite by tools/bake-drone.py
+  if (scene.textures.exists('drone-icon')) {
+    scene.textures.remove('icon_drone_spark');
+    scene.textures.addImage('icon_drone_spark', scene.textures.get('drone-icon').getSourceImage() as HTMLImageElement);
+    iconUrls.drone_spark = 'sprites/drone-icon.png';
+  }
 
   const anim = (key: string, tex: string, frames: number[], rate: number) =>
     scene.anims.create({ key, frames: frames.map((frame) => ({ key: tex, frame })), frameRate: rate, repeat: -1 });
@@ -506,7 +500,7 @@ export function buildSprites(scene: Phaser.Scene): void {
   anim('vendor-idle', 'vendor', [0, 1], 2);
   anim('sorter-walk', 'sorter', [0, 1], 5);
   anim('press-walk', 'press', [0, 1], 3);
-  anim('drone-fly', 'drone', [0, 1], 12);
+  anim('drone-fly', 'drone', [0, 1, 2, 3], 14);
   anim('crane-idle', 'crane', [0, 1], 3);
   anim('pile-glint', 'pile', [0, 1], 2);
   anim('relic-pulse', 'relic', [0, 1], 3);
