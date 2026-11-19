@@ -5,6 +5,7 @@ import { addItems } from '../core/state';
 import { DECALS, TILES } from '../art/tileArt';
 import { PILE_TABLES } from '../data/areas';
 import { ITEMS, RARITY, rarityOf, type ItemBag, type ItemId } from '../data/items';
+import { attachDogParts, dogPartsFor } from '../art/dogParts';
 import { attachDroneParts, dronePartsFor } from '../art/droneParts';
 import { GEAR_LAYERS, gearTexture, hasGearArt } from '../art/heroGear';
 import { Crane, Enemy, type EnemyKind, type Target } from '../game/enemies';
@@ -147,6 +148,8 @@ export class WorldScene extends Phaser.Scene {
   private action: { key: string; until: number } | null = null;
   private gear: Phaser.GameObjects.Sprite[] = [];
   private droneLook = '';
+  private dogLook = '';
+  private removeDogParts: (() => void) | null = null;
   private shadow!: Phaser.GameObjects.Ellipse;
   private heroRing!: Phaser.GameObjects.Ellipse;
   private lastHurt = 0;
@@ -259,9 +262,11 @@ export class WorldScene extends Phaser.Scene {
     showHud(true);
     showAreaBanner(this.areaName, AREA_SUBTITLE[this.mapId]);
     this.syncGear();
+    this.syncDogLook();
     const offState = session.onChange(() => {
       this.syncDrone();
       this.syncGear();
+      this.syncDogLook();
     });
     this.events.once('shutdown', () => {
       offState();
@@ -532,6 +537,16 @@ export class WorldScene extends Phaser.Scene {
       if (p.isTinted) g.setTint(p.tintTopLeft);
       else g.clearTint();
     });
+  }
+
+  /** Ferrugem's role and progress overlays; rebuilt only when the look changes. */
+  private syncDogLook(): void {
+    const parts = dogPartsFor(session.state);
+    const look = parts.join(',');
+    if (look === this.dogLook && this.removeDogParts) return;
+    this.removeDogParts?.();
+    this.removeDogParts = attachDogParts(this, this.dog.sprite, parts);
+    this.dogLook = look;
   }
 
   /** Rebuilds the gear overlays when the equipment changes. */

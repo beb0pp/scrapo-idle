@@ -145,8 +145,9 @@ def build_hero(base: Image.Image, wrench_side: str = 'right') -> list[Image.Imag
     return frames
 
 
-def dog_frames() -> list[Image.Image]:
-    base = Image.open(SRC / 'dog_base.png').convert('RGBA')
+def dog_frames(base: Image.Image | None = None) -> list[Image.Image]:
+    """9 Ferrugem frames; with an overlay (see dog_gear.py) the same poses for that overlay."""
+    base = base if base is not None else Image.open(SRC / 'dog_base.png').convert('RGBA')
     head = region(base, lambda x, y: x >= 12 and y <= 15)
     body = region(base, lambda x, y: y < 25 and not (x >= 12 and y <= 15))
     back = region(base, lambda x, y: y >= 25 and x <= 11)
@@ -197,4 +198,9 @@ if __name__ == '__main__':
         sheet(frames).save(OUT / 'gear' / f'{item}.png')
         frames[0].save(OUT / 'gear' / f'{item}-portrait.png')
     print('gear', len(GEAR), 'overlays -> public/sprites/gear/')
+    from dog_gear import DOG_GEAR
+    dog_base = Image.open(SRC / 'dog_base.png').convert('RGBA')
+    for name, paint in DOG_GEAR.items():
+        sheet(dog_frames(paint(dog_base))).save(OUT / f'dog-{name}.png')
+    print('dog', len(DOG_GEAR), 'overlays -> public/sprites/dog-*.png')
     print('hero', len(hero), 'frames', HERO_FRAME, '-> public/sprites/hero.png')
