@@ -2,12 +2,12 @@
 // The choice is a per-viewer convenience kept in localStorage, one entry per window kind.
 
 export type DockMode = 'right' | 'left' | 'free';
-export type DockKind = 'inventory' | 'ferro' | 'workshop';
+export type DockKind = 'inventory' | 'ferro' | 'workshop' | 'map';
 
 const ORDER: DockMode[] = ['right', 'left', 'free'];
-const KINDS: DockKind[] = ['inventory', 'ferro', 'workshop'];
+const KINDS: DockKind[] = ['inventory', 'ferro', 'workshop', 'map'];
 /** 'scrapo.invDock' predates the other windows; kept so players keep their Mochila choice. */
-const KEY: Record<DockKind, string> = { inventory: 'scrapo.invDock', ferro: 'scrapo.dock.ferro', workshop: 'scrapo.dock.workshop' };
+const KEY: Record<DockKind, string> = { inventory: 'scrapo.invDock', ferro: 'scrapo.dock.ferro', workshop: 'scrapo.dock.workshop', map: 'scrapo.dock.map' };
 export const DOCK_LABEL: Record<DockMode, string> = { right: 'Direita', left: 'Esquerda', free: 'Livre' };
 
 interface DockState {

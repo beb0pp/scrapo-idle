@@ -14,9 +14,10 @@ import { $, esc, icon } from './shared';
 import { ferroPanelView, handleFerroAction } from './ferroPanel';
 import { applyDock, cycleDock, dockLabel, enableDockDrag, isDockKind, type DockKind } from './dock';
 import { useManaItem } from '../game/ferroController';
+import { mountMapPanel, resetMapPanel } from './mapPanel';
 import './mochila.css';
 
-export type PanelKind = 'inventory' | 'workshop' | 'vendor' | 'terminal' | 'settings' | 'ferro';
+export type PanelKind = 'inventory' | 'workshop' | 'vendor' | 'terminal' | 'settings' | 'ferro' | 'map';
 let openKind: PanelKind | null = null;
 let selected: ItemId | null = null;
 let filter = 'Todos';
@@ -31,6 +32,7 @@ export function panelOpen(): boolean { return openKind !== null || !$('modal').h
 const dockKind = (): DockKind | null => (isDockKind(openKind) ? openKind : null);
 export function openPanel(kind: PanelKind): void {
   openKind = kind;
+  if (kind === 'map') resetMapPanel();
   renderPanel();
   $('panel').hidden = false;
   applyDock($('panel'), dockKind());
@@ -53,7 +55,7 @@ export function initPanels(): void {
   window.addEventListener('resize', () => { if (dockKind()) applyDock($('panel'), dockKind()); });
   window.addEventListener('scrapo:panel', (event) => togglePanel((event as CustomEvent<PanelKind>).detail));
   window.addEventListener('scrapo:tool', (event) => session.run((state) => equip(state, (event as CustomEvent<ItemId>).detail)));
-  session.onChange(() => { if (openKind) renderPanel(); });
+  session.onChange(() => { if (openKind && openKind !== 'map') renderPanel(); });
 }
 
 function handlePanelClick(event: MouseEvent): void {
@@ -87,14 +89,15 @@ function coinPop(): void {
 
 function renderPanel(): void {
   if (!openKind) return;
-  const views: Record<PanelKind, (state: GameState) => string> = { inventory, workshop, vendor, terminal, settings, ferro: ferroPanelView };
-  const titles: Record<PanelKind, string> = { inventory: 'Mochila', workshop: 'Oficina', vendor: `Mercado — ${VENDOR_NAME}`, terminal: 'Terminal de Extração', settings: 'Configurações', ferro: 'Ferromancia' };
+  const views: Record<PanelKind, (state: GameState) => string> = { inventory, workshop, vendor, terminal, settings, ferro: ferroPanelView, map: () => '<div class="map-slot"></div>' };
+  const titles: Record<PanelKind, string> = { inventory: 'Mochila', workshop: 'Oficina', vendor: `Mercado — ${VENDOR_NAME}`, terminal: 'Terminal de Extração', settings: 'Configurações', ferro: 'Ferromancia', map: 'Mapa' };
   const kind = dockKind();
   const dock = kind
     ? `<button data-act="dock" class="dock-btn" title="Mudar posição da janela (ou arraste pelo título)">${dockLabel(kind)}</button>`
     : '';
   $('panel').innerHTML = `<div class="panel-head"><h2>${titles[openKind]}</h2>${dock}<span class="money">${session.state.currency} cr</span>`
     + `<button data-act="close">Esc ✕</button></div><div class="panel-body">${views[openKind](session.state)}</div>`;
+  if (openKind === 'map') mountMapPanel($('panel').querySelector('.map-slot'));
 }
 
 function inventory(state: GameState): string {

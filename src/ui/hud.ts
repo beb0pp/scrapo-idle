@@ -36,6 +36,7 @@ export function initHud(): void {
     <div id="map-view" hidden><div id="map-view-card"><div id="map-view-head"><h2>Mapa regional</h2><button id="map-close">Esc ✕</button></div><canvas id="map-view-canvas" width="720" height="480"></canvas><div class="map-legend"><span>Entrada</span><span>Extração</span><span>NPC</span><span>Chefe</span><span>Pilha</span></div></div></div>
     <div class="hud-bottom">
       ${skillButton('Mochila', 'I', 'backpack', 'data-open="inventory"', 'inv')}
+      ${skillButton('Mapa', 'M', 'map', 'data-open="map" title="Mapa das áreas de caça (M)"', 'map-btn')}
       ${skillButton('Auto', 'T', 'auto', 'id="auto-btn" title="Modo automático: luta, desmonta sucata e recolhe sozinho (T)"', 'auto-btn')}
       ${(['Pulso', 'Arco', 'Investida', 'Sobrecarga'] as const).map((name, index) => skillButton(name, 'QWER'[index], (['pulse', 'arc', 'dash', 'overload'] as const)[index], `data-skill="${index}" title="${['Pulso Magnético: puxa e atordoa inimigos próximos', 'Arco Elétrico: raio em cadeia nos alvos', 'Investida Hidráulica: avanço invulnerável que rompe ímãs e interrompe golpes', 'Sobrecarga do drone: o módulo do drone dispara com força total (precisa do drone montado)'][index]}"`, '', `<i class="cd" id="cd${index}"></i>`)).join('')}
       <div id="tool-hotbar" class="tool-hotbar"></div>
