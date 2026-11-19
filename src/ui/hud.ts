@@ -76,7 +76,7 @@ function handleHudClick(event: MouseEvent): void {
 export function refreshHud(): void {
   const state = session.state;
   $('hp-fill').style.width = `${(session.hp / session.maxHp) * 100}%`;
-  $('hp-num').textContent = String(Math.ceil(session.hp));
+  $('hp-num').textContent = `${Math.ceil(session.hp)}/${session.maxHp}`;
   $('money').textContent = String(state.currency);
   $('objective').textContent = objective(state);
   const badge = $('drone-badge');
@@ -122,7 +122,7 @@ export function hudFrame(frame: HudFrame): void {
   boss.hidden = !frame.boss;
   if (frame.boss) $<HTMLElement>('boss-fill').style.width = `${(frame.boss.hp / frame.boss.max) * 100}%`;
   $('hp-fill').style.width = `${(session.hp / session.maxHp) * 100}%`;
-  $('hp-num').textContent = String(Math.ceil(session.hp));
+  $('hp-num').textContent = `${Math.ceil(session.hp)}/${session.maxHp}`;
 }
 
 export function objective(s: typeof session.state): string {

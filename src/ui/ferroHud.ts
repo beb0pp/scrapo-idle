@@ -50,14 +50,34 @@ export function initFerroHud(): void {
 function injectVitals(): void {
   const hp = document.querySelector('.hud-top .hp');
   if (!hp || document.getElementById('mana-fill')) return;
+  // one framed panel: level medallion on the left, HP / mana / XP bars stacked on the right
   const vitals = document.createElement('div');
   vitals.className = 'vitals';
   hp.replaceWith(vitals);
+  const medal = document.createElement('div');
+  medal.className = 'lvl-medal';
+  medal.id = 'lvl-badge';
+  medal.title = 'Nível';
+  medal.innerHTML = '<small>NV</small><b id="lvl-num">1</b>';
+  const bars = document.createElement('div');
+  bars.className = 'vit-bars';
   const mana = document.createElement('div');
   mana.className = 'mana';
-  mana.innerHTML = '<span class="mana-gem" aria-hidden="true">◆</span><div class="bar mana-bar" role="meter" aria-label="Mana" aria-valuemin="0"><i id="mana-fill"></i></div><span id="mana-num"></span>'
-    + '<span class="lvl" id="lvl-badge" title="Nível">Nv 1</span><div class="bar xp-bar" role="meter" aria-label="Experiência" aria-valuemin="0"><i id="xp-fill"></i></div>';
-  vitals.append(hp, mana);
+  mana.innerHTML = '<span class="mana-gem" aria-hidden="true">◆</span><div class="bar-wrap"><div class="bar mana-bar" role="meter" aria-label="Mana" aria-valuemin="0"><i id="mana-fill"></i></div><span id="mana-num"></span></div>';
+  const xp = document.createElement('div');
+  xp.className = 'xp';
+  xp.innerHTML = '<div class="bar xp-bar" role="meter" aria-label="Experiência" aria-valuemin="0"><i id="xp-fill"></i></div><span id="xp-num"></span>';
+  bars.append(hp, mana, xp);
+  vitals.append(medal, bars);
+  // numbers sit over the bars (not inside them) so the bars' clip shapes never cut the digits
+  const hpBar = hp.querySelector('.hp-bar');
+  const hpNum = document.getElementById('hp-num');
+  if (hpBar && hpNum) {
+    const wrap = document.createElement('div');
+    wrap.className = 'bar-wrap';
+    hpBar.replaceWith(wrap);
+    wrap.append(hpBar, hpNum);
+  }
 }
 
 export function setMana(value: number, max: number): void {
@@ -79,8 +99,10 @@ export function setLevel(info: LevelInfo): void {
   const key = `${info.level}:${info.into}`;
   if (key === levelKey) return;
   levelKey = key;
-  const badge = document.getElementById('lvl-badge');
-  if (badge) badge.textContent = `Nv ${info.level}`;
+  const num = document.getElementById('lvl-num');
+  if (num) num.textContent = String(info.level);
+  const xpNum = document.getElementById('xp-num');
+  if (xpNum) xpNum.textContent = info.need > 0 ? `XP ${info.into}/${info.need}` : 'XP máx.';
   const fill = document.getElementById('xp-fill');
   if (!fill) return;
   fill.style.width = `${info.need > 0 ? Math.min(100, (info.into / info.need) * 100) : 100}%`;

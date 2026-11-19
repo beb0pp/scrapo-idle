@@ -1,3 +1,4 @@
+import { levelOf } from '../core/mana';
 import { availableAreas, computeProgress } from '../core/afk';
 import { afkRareFactor, droneCapacity, droneReady, playerStats } from '../core/derived';
 import { buy, craft, dismantle, equip, missingFor, offerAvailable, recipeKnown, sell, unequip } from '../core/economy';
@@ -160,8 +161,15 @@ function slotTile(state: GameState, slot: EquipSlot): string {
 function paperDoll(state: GameState): string {
   return `<div class="mo-doll">
     ${playerSlots.map((slot) => slotTile(state, slot)).join('')}
-    <div class="mo-stage"><img class="mo-hero" src="${heroPortraitUrl}" alt="Personagem"></div>
+    <div class="mo-stage"><img class="mo-hero" src="${heroPortraitUrl}" alt="Personagem">${levelPlate(state)}</div>
   </div>`;
+}
+
+function levelPlate(state: GameState): string {
+  const info = levelOf(state);
+  const pct = info.need > 0 ? Math.min(100, Math.round((info.into / info.need) * 100)) : 100;
+  const xp = info.need > 0 ? `${info.into}/${info.need} XP` : 'XP máximo';
+  return `<div class="mo-level" title="Nível ${info.level} · ${xp}"><b>Nv ${info.level}</b><span class="mo-level-bar"><i style="width:${pct}%"></i></span><small>${xp}</small></div>`;
 }
 
 function statChips(stats: ReturnType<typeof playerStats>): string {
