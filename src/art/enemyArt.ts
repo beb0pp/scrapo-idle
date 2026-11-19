@@ -38,7 +38,15 @@ function canvasSheet(scene: Phaser.Scene, key: string, size: number, paint: Pain
     texture.add(frame, 0, frame * size, 0, size, size);
   }
   texture.refresh();
+  const icon = document.createElement('canvas');
+  icon.width = size;
+  icon.height = size;
+  icon.getContext('2d')?.drawImage(texture.getSourceImage() as HTMLCanvasElement, 0, 0, size, size, 0, 0, size, size);
+  enemyIconUrls[key] = icon.toDataURL();
 }
+
+/** Frame 0 of each enemy sheet as a data URL, for DOM panels (map markers). Filled at boot. */
+export const enemyIconUrls: Record<string, string> = {};
 
 function sorter(ctx: CanvasRenderingContext2D, frame: number, ox: number): void {
   const step = frame < 4 ? [0, 1, 0, -1][frame] : 0;
