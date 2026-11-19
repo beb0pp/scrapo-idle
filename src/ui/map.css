@@ -122,3 +122,19 @@
 .mapw-mark .mapw-here { position: absolute; left: 50%; bottom: calc(100% + 12px); transform: translateX(-50%); }
 .mapw-table tr.is-here { background: rgba(143, 209, 106, 0.12); box-shadow: inset 3px 0 0 var(--green); }
 .mapw-table tr.is-here .mapw-here { margin-left: 6px; vertical-align: 1px; }
+/* hunt forecast (detail card) */
+.mapw-fc { margin: 6px 0 0; padding: 6px 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; background: var(--ink); border: 1px solid var(--line); }
+.mapw-fc-stats { margin: 0; display: flex; gap: 12px; }
+.mapw-fc-stat { display: flex; flex-direction: column; }
+.mapw-fc-stat dt { color: var(--muted); font-size: 11px; line-height: 12px; }
+.mapw-fc-stat dd { margin: 0; color: var(--text); font-size: 15px; line-height: 18px; font-variant-numeric: tabular-nums; }
+.mapw-fc-stat[data-fc='xp'] dd { color: var(--cyan); }
+.mapw-fc-stat[data-fc='scrap'] dd { color: var(--amber); }
+.mapw-fc-drops, .mapw-fc-els { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.mapw-fc-drop { display: flex; align-items: center; gap: 2px; padding: 1px 4px 1px 2px; font-size: 12px; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); }
+.mapw-fc-el { display: flex; align-items: center; gap: 4px; font-size: 11px; }
+.mapw-fc-el small { font-size: 11px; color: var(--muted); }
+.mapw-fc-el.is-eficaz small { color: var(--green); }
+.mapw-fc-el.is-resiste small { color: var(--red); }
+.mapw-fc-note { margin-left: auto; color: var(--muted); font-size: 11px; font-style: italic; }
+@media (max-width: 640px) { .mapw-card { flex-wrap: wrap; } .mapw-card .mapw-go { width: 100%; } }
