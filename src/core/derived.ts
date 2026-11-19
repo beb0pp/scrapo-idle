@@ -1,4 +1,5 @@
 import type { GameState } from './state';
+import type { ElementId } from '../data/elements';
 import { ITEMS, type ItemId } from '../data/items';
 import { ferroMods } from './progression';
 
@@ -34,6 +35,12 @@ export function pulseRadius(s: GameState): number {
 
 export function arcJumps(s: GameState): number {
   return ARC_JUMPS + (s.equipped.relic === 'relic_capacitor' ? 2 : 0);
+}
+
+/** Element of the hero's melee hit, from the equipped tool; null = neutral. */
+export function meleeElement(s: GameState): ElementId | null {
+  const tool = s.equipped.tool;
+  return (tool && ITEMS[tool].element) || null;
 }
 
 export function droneReady(s: GameState): boolean {

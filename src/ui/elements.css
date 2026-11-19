@@ -1,0 +1,23 @@
+.el-chip {
+  --el: #aab4c4;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px 1px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--el);
+  background: color-mix(in srgb, var(--el) 14%, #0c0a12);
+  border: 1px solid color-mix(in srgb, var(--el) 55%, transparent);
+}
+.el-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: none;
+  background: var(--el);
+  box-shadow: 0 0 4px var(--el);
+}

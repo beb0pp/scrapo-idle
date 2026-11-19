@@ -12,6 +12,7 @@ import {
 import { equipSpell, recruit, recruitProblem, setFormation, slotOf, spellCooldownMs, spellPower, transmute } from '../core/spells';
 import { countOf, hasItems, type GameState } from '../core/state';
 import { session } from '../session';
+import { elementChip } from './elementChip';
 import { esc, icon } from './shared';
 import './ferro.css';
 
@@ -312,7 +313,7 @@ function spellCard(state: GameState, id: SpellId, learned: boolean): string {
   const keys = SPELL_KEYS.map((key, i) =>
     `<button class="fe-key${slot === i ? ' active' : ''}" aria-pressed="${slot === i}" data-act="f-equip:${id}:${i}" ${learned ? '' : 'disabled'} aria-label="Equipar ${esc(spell.name)} em ${key}">${key}</button>`).join('');
   const cd = (spellCooldownMs(state, id) / 1000).toFixed(1).replace('.', ',');
-  const stats = `<span class="fe-sstat fe-mana" title="Custo: ${spell.mana} de mana">◆ ${spell.mana}</span>${reforco(state, spell.cost)}<span class="fe-sstat" title="Recarga">⏱ ${cd} s</span>`
+  const stats = (spell.element ? elementChip(spell.element) : '') + `<span class="fe-sstat fe-mana" title="Custo: ${spell.mana} de mana">◆ ${spell.mana}</span>${reforco(state, spell.cost)}<span class="fe-sstat" title="Recarga">⏱ ${cd} s</span>`
     + `<span class="fe-sstat" title="${TARGET_LABEL[spell.target]}">${TARGET_GLYPH[spell.target]}</span><span class="fe-sstat" title="Poder (${SCHOOL_LABEL[spell.school]})">✹ ${spellPower(state, id)}</span>`;
   const node = unlocker(id);
   const head = learned

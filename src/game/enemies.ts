@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
-import { XP } from '../data/xp';
+import { elementTint } from '../core/elements';
+import type { ElementId } from '../data/elements';
+import { ENEMY_INFO, type EnemyInfo, type EnemyKind } from '../data/enemies';
 
-export type EnemyKind = 'sorter' | 'press' | 'sparkbot' | 'magnetron' | 'scrapgolem';
+export { killXp, type EnemyKind } from '../data/enemies';
 
 export interface Target {
   x: number;
@@ -9,8 +11,7 @@ export interface Target {
   hurt: (dmg: number, fromX: number, fromY: number) => void;
 }
 
-interface Cfg {
-  hp: number;
+interface Cfg extends EnemyInfo {
   patrol: number;
   chase: number;
   aggro: number;
@@ -28,15 +29,13 @@ interface Cfg {
   slam?: boolean;
 }
 
-const CFG: Record<EnemyKind, Cfg> = {
-  sorter: { hp: 30, patrol: 22, chase: 50, aggro: 96, reach: 18, windup: 600, recover: 650, dmg: 10, radius: 22, light: true, tex: 'sorter', anim: 'sorter-walk', size: 16 },
-  press: { hp: 80, patrol: 16, chase: 34, aggro: 88, reach: 22, windup: 950, recover: 950, dmg: 22, radius: 32, light: false, tex: 'press', anim: 'press-walk', size: 24 },
-  sparkbot: { hp: 20, patrol: 38, chase: 82, aggro: 112, reach: 44, windup: 360, recover: 520, dmg: 12, radius: 52, light: true, tex: 'sparkbot', anim: 'sparkbot-walk', size: 16, lunge: true },
-  magnetron: { hp: 48, patrol: 20, chase: 34, aggro: 150, reach: 76, windup: 700, recover: 900, dmg: 14, radius: 150, light: false, tex: 'magnetron', anim: 'magnetron-walk', size: 24, ranged: true },
-  scrapgolem: { hp: 130, patrol: 12, chase: 27, aggro: 100, reach: 30, windup: 1100, recover: 1050, dmg: 28, radius: 42, light: false, tex: 'scrapgolem', anim: 'scrapgolem-walk', size: 32, slam: true },
+const CFG: Record<EnemyKind, Omit<Cfg, keyof EnemyInfo>> = {
+  sorter: { patrol: 22, chase: 50, aggro: 96, reach: 18, windup: 600, recover: 650, dmg: 10, radius: 22, light: true, tex: 'sorter', anim: 'sorter-walk', size: 16 },
+  press: { patrol: 16, chase: 34, aggro: 88, reach: 22, windup: 950, recover: 950, dmg: 22, radius: 32, light: false, tex: 'press', anim: 'press-walk', size: 24 },
+  sparkbot: { patrol: 38, chase: 82, aggro: 112, reach: 44, windup: 360, recover: 520, dmg: 12, radius: 52, light: true, tex: 'sparkbot', anim: 'sparkbot-walk', size: 16, lunge: true },
+  magnetron: { patrol: 20, chase: 34, aggro: 150, reach: 76, windup: 700, recover: 900, dmg: 14, radius: 150, light: false, tex: 'magnetron', anim: 'magnetron-walk', size: 24, ranged: true },
+  scrapgolem: { patrol: 12, chase: 27, aggro: 100, reach: 30, windup: 1100, recover: 1050, dmg: 28, radius: 42, light: false, tex: 'scrapgolem', anim: 'scrapgolem-walk', size: 32, slam: true },
 };
-
-export const killXp = (kind: EnemyKind): number => Math.round(CFG[kind].hp / XP.hpPerKillXp);
 
 const LEASH = 240;
 const TELEGRAPH = 0xe8433a;
@@ -62,7 +61,8 @@ export class Enemy {
   constructor(scene: Phaser.Scene, x: number, y: number, kind: EnemyKind) {
     this.scene = scene;
     this.kind = kind;
-    this.cfg = CFG[kind];
+    this.cfg = { ...CFG[kind], ...ENEMY_INFO[kind] };
+    this.pipTint = elementTint(this.cfg.element);
     this.hp = this.cfg.hp;
     this.home = new Phaser.Math.Vector2(x, y);
     this.sprite = scene.physics.add.sprite(x, y, this.cfg.tex, 0);
@@ -74,9 +74,14 @@ export class Enemy {
   }
 
   private readonly shadow: Phaser.GameObjects.Ellipse;
+  private readonly pipTint: number;
 
   get alive(): boolean {
     return this.hp > 0;
+  }
+
+  get element(): ElementId {
+    return this.cfg.element;
   }
 
   get light(): boolean {
@@ -196,6 +201,8 @@ export class Enemy {
       this.gfx.fillStyle(0x1b1a24).fillRect(this.x - 7, this.y - 12, 14, 3);
       this.gfx.fillStyle(0xe8433a).fillRect(this.x - 6, this.y - 11, 12 * (this.hp / this.cfg.hp), 1);
     }
+    this.gfx.fillStyle(0x1b1a24).fillRect(this.x - 11, this.y - 13, 4, 4);
+    this.gfx.fillStyle(this.pipTint).fillRect(this.x - 10, this.y - 12, 2, 2);
     this.gfx.setDepth(this.y - 1);
   }
 

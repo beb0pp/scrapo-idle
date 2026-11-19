@@ -5,6 +5,7 @@ import { XP } from '../data/xp';
 import { manaRegen, maxMana, OUT_OF_COMBAT_MS, useItem } from '../core/mana';
 import { buffedMods, castProblem, castSpell, discover, recruit, recruitProblem, slotOf, spellCooldownMs, spellPower, EMPOWER_MUL, type ManaHolder, type SpellBuffs, type SpellCooldowns } from '../core/spells';
 import { addItems, hasItems } from '../core/state';
+import type { ElementId } from '../data/elements';
 import { ALLIES, SPELLS, type FerroMods, type SpellId } from '../data/ferromancy';
 import { ITEMS, RARITY, rarityOf, type ItemBag, type ItemId } from '../data/items';
 import { PILE_RESPAWN_MS, session } from '../session';
@@ -74,7 +75,7 @@ interface FerroHost extends Phaser.Scene {
   collision: Phaser.Tilemaps.TilemapLayer;
   tileBlocked(x: number, y: number): boolean;
   attractPickups(x: number, y: number, r: number): void;
-  damageEnemy(e: Enemy, n: number): void;
+  damageEnemy(e: Enemy, n: number, el?: ElementId | null): void;
   damageCrane(n: number): void;
 }
 
@@ -93,7 +94,7 @@ export function ferroApi(scene: Phaser.Scene): FerroApi {
         get x() { return e.x; },
         get y() { return e.y; },
         radius: 8,
-        hit: (n: number) => h.damageEnemy(e, n),
+        hit: (n: number, el?: ElementId | null) => h.damageEnemy(e, n, el),
       }));
       const c = h.crane;
       if (c?.alive) list.push({ get x() { return c.sprite.x; }, get y() { return c.sprite.y + 10; }, radius: 20, hit: (n) => h.damageCrane(n) });
@@ -340,9 +341,10 @@ export class FerroController {
     if (id === 'spell_ember' && target) {
       const to = { x: target.x, y: target.y - 4 };
       playEmber(scene, caster, { x: hero.x, y: hero.y - 14 }, to, () => {
-        target.hit(power);
+        const el = SPELLS.spell_ember.element;
+        target.hit(power, el);
         const splash = Math.round(power * 0.5);
-        for (const t of this.api.targets()) if (dist(t, to) < EMBER_SPLASH && !sameSpot(t, target)) t.hit(splash);
+        for (const t of this.api.targets()) if (dist(t, to) < EMBER_SPLASH && !sameSpot(t, target)) t.hit(splash, el);
         if (this.ally && activeSynergies(session.state).some((s) => s.id === 'resonance')) this.ally.echo(target);
       });
     } else if (id === 'spell_ward') {

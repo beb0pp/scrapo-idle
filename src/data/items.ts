@@ -1,3 +1,5 @@
+import type { ElementId } from './elements';
+
 export const ITEM_IDS = [
   'scrap',
   'gear',
@@ -54,6 +56,8 @@ export interface ItemDef {
   dismantle?: ItemBag;
   slot?: EquipSlot;
   stats?: Partial<{ combate: number; extracao: number; defesa: number; vida: number; sorte: number; mana: number }>;
+  /** Tools only: element of the hero's melee hit. Absent = neutral. */
+  element?: ElementId;
   rarity?: 'comum' | 'incomum' | 'raro' | 'relíquia';
 }
 
@@ -73,7 +77,7 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   relic_capacitor: { id: 'relic_capacitor', name: 'Capacitor Antigo', kind: 'relic', slot: 'relic', sell: 40, dismantle: { cell: 1, cable: 2 }, desc: 'Equipado: Arco Elétrico salta em +2 alvos.', stats: { mana: 15 } },
   tool_wrench_old: { id: 'tool_wrench_old', name: 'Chave Inglesa Gasta', kind: 'tool', slot: 'tool', sell: 2, desc: 'A ferramenta que trouxe para o pátio.', stats: { combate: 10, extracao: 2 } },
   tool_wrench_reinforced: { id: 'tool_wrench_reinforced', name: 'Chave Inglesa Reforçada', kind: 'tool', slot: 'tool', sell: 18, desc: 'Mandíbula endurecida para metal pesado.', stats: { combate: 14, extracao: 3 } },
-  tool_hydraulic_pry: { id: 'tool_hydraulic_pry', name: 'Pé-de-cabra Hidráulico', kind: 'tool', slot: 'tool', sell: 22, desc: 'Menos dano, muita força de extração.', stats: { combate: 9, extracao: 6 } },
+  tool_hydraulic_pry: { id: 'tool_hydraulic_pry', name: 'Pé-de-cabra Hidráulico', kind: 'tool', slot: 'tool', sell: 22, desc: 'Menos dano, muita força de extração. Golpe Blindado: esmaga caldeiras e bobinas.', stats: { combate: 9, extracao: 6 }, element: 'blindado' },
   head_scrap_cap: { id: 'head_scrap_cap', name: 'Boné de Sucateiro', kind: 'equipment', slot: 'head', sell: 8, desc: 'Proteção leve contra lascas.', stats: { defesa: 1, sorte: 1, mana: 5 } },
   body_work_jacket: { id: 'body_work_jacket', name: 'Jaqueta de Trabalho', kind: 'equipment', slot: 'body', sell: 12, desc: 'Forrada para o turno longo.', stats: { defesa: 3, vida: 8 } },
   hands_grip_gloves: { id: 'hands_grip_gloves', name: 'Luvas de Aderência', kind: 'equipment', slot: 'hands', sell: 9, desc: 'Seguram ferramentas e cabos.', stats: { extracao: 1, defesa: 1 } },
