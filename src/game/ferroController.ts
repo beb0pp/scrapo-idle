@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { activeSynergies, costText, ferroMods } from '../core/progression';
-import { levelOf, manaRegen, maxMana, OUT_OF_COMBAT_MS, useItem } from '../core/mana';
+import { grantXp, levelOf } from '../core/level';
+import { XP } from '../data/xp';
+import { manaRegen, maxMana, OUT_OF_COMBAT_MS, useItem } from '../core/mana';
 import { buffedMods, castProblem, castSpell, discover, recruit, recruitProblem, slotOf, spellCooldownMs, spellPower, EMPOWER_MUL, type ManaHolder, type SpellBuffs, type SpellCooldowns } from '../core/spells';
 import { addItems, hasItems } from '../core/state';
 import { ALLIES, SPELLS, type FerroMods, type SpellId } from '../data/ferromancy';
@@ -11,6 +13,7 @@ import { modal, toast } from '../ui/ui';
 import { Cobalto, type AllyTarget } from './ally';
 import type { Crane, Enemy } from './enemies';
 import { reachableCells, spotNear } from './placement';
+import { levelUpBurst } from './vfx';
 import { discoveryBurst, playEmber, playHarvest, playHaste, playLodestone, playNet, playWard, spellAura, wardBreak, wardHit, type Pt, type WardShield } from './spellfx';
 
 // Ferromancy runtime in the world: spells (Z X C), Auto casting, Ether veins, the sleeping automaton and Cobalto.
@@ -167,7 +170,6 @@ export class FerroController {
   private cachedMods: FerroMods;
   private autoAt = 0;
   private hudAt = 0;
-  private level: number;
   /** Regen runs on the wall clock, like the cooldowns: frame deltas are capped and under-count. */
   private manaAt = Date.now();
 
@@ -175,7 +177,6 @@ export class FerroController {
     this.api = api;
     this.scene = api.scene;
     this.cachedMods = ferroMods(session.state);
-    this.level = levelOf(session.state).level;
     fillManaOnce();
     this.keys = this.scene.input.keyboard!.addKeys('Z,X,C') as FerroController['keys'];
     onSpellClick((slot) => {
@@ -185,10 +186,14 @@ export class FerroController {
     const off = session.onChange(() => {
       this.cachedMods = ferroMods(session.state);
       this.syncParty();
-      this.checkLevel();
+    });
+    const offLevel = session.onLevelUp(() => {
+      const hero = this.api.hero();
+      levelUpBurst(this.scene, { x: hero.x, y: hero.y });
     });
     this.scene.events.once('shutdown', () => {
       off();
+      offLevel();
       onSpellClick(() => {});
       this.ally?.destroy();
       this.ally = null;
@@ -327,13 +332,6 @@ export class FerroController {
     return inRange.sort(byDist(hero))[0];
   }
 
-  private checkLevel(): void {
-    const { level } = levelOf(session.state);
-    if (level <= this.level) return;
-    this.level = level;
-    toast(`Nível ${level}! +5 de mana máxima.`, 'loot');
-  }
-
   private playSpell(id: SpellId, target: AllyTarget | null, empowered: boolean): void {
     const scene = this.scene;
     const hero = this.api.hero();
@@ -454,6 +452,7 @@ export class FerroController {
     session.mutate((s) => {
       addItems(s, bag);
       s.stats.searches++;
+      grantXp(s, XP.search);
       first = discover(s, 'ether_vein');
     });
     this.refreshVein(v);

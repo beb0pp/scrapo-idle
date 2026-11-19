@@ -1,7 +1,7 @@
 import { spellIconUrls } from '../art/ferroArt';
 import { SPELL_KEYS, SPELLS } from '../data/ferromancy';
 import { ITEMS, type ItemId } from '../data/items';
-import type { LevelInfo } from '../core/mana';
+import type { LevelInfo } from '../core/level';
 import { canEmpower } from '../core/spells';
 import { countOf } from '../core/state';
 import { session } from '../session';
@@ -101,6 +101,7 @@ export function setLevel(info: LevelInfo): void {
   levelKey = key;
   const num = document.getElementById('lvl-num');
   if (num) num.textContent = String(info.level);
+  document.getElementById('lvl-badge')?.setAttribute('aria-label', `Nível ${info.level}`);
   const xpNum = document.getElementById('xp-num');
   if (xpNum) xpNum.textContent = info.need > 0 ? `XP ${info.into}/${info.need}` : 'XP máx.';
   const fill = document.getElementById('xp-fill');

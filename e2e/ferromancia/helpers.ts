@@ -8,6 +8,8 @@ export interface SeedState {
   equipped?: Record<string, string | null>;
   flags?: Record<string, boolean>;
   stats?: { searches?: number; kills?: number; extractions?: number };
+  /** Omitted: the save has no xp field and the game migrates it from stats, like an old save. */
+  xp?: number;
   ferro?: {
     built?: string[];
     learned?: string[];
@@ -29,6 +31,7 @@ function fullSave(partial: SeedState) {
     claimedSessions: [],
     lastHeartbeat: Date.now(),
     stats: { searches: 0, kills: 0, extractions: 0, ...partial.stats },
+    ...(partial.xp === undefined ? {} : { xp: partial.xp }),
     ferro: {
       built: [], learned: [], loadout: [null, null, null], discovered: [], recruited: [],
       formation: { front: 'ferrugem', back: null },

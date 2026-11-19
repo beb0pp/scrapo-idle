@@ -1,6 +1,7 @@
 import { ITEM_IDS, type ItemBag, type ItemId } from '../data/items';
 import { AFK_AREA_IDS } from '../data/areas';
 import { ALLIES, BUILD_NODES, DISCOVERY_TEXT, SKILL_NODES, SPELLS, type AllyId, type MemberId } from '../data/ferromancy';
+import { legacyXp } from './level';
 import { newFerro, newGame, SAVE_VERSION, type AfkSession, type FerroState, type GameState, type SpellLoadout } from './state';
 
 export const SAVE_KEY = 'scrapo.save';
@@ -84,7 +85,13 @@ export function parseSave(json: string | null, now: number): GameState {
   const base = newGame(now);
   const eq = (raw.equipped ?? {}) as Record<string, unknown>;
   const slot = (v: unknown) => (isItem(v) ? v : null);
-  const stats = (raw.stats ?? {}) as Record<string, unknown>;
+  const rawStats = (raw.stats ?? {}) as Record<string, unknown>;
+  const stats = {
+    searches: isNum(rawStats.searches) ? rawStats.searches : 0,
+    kills: isNum(rawStats.kills) ? rawStats.kills : 0,
+    extractions: isNum(rawStats.extractions) ? rawStats.extractions : 0,
+  };
+  const ferro = parseFerro(raw.ferro);
   const legacy = raw.version === 1;
   return {
     ...base,
@@ -98,12 +105,9 @@ export function parseSave(json: string | null, now: number): GameState {
     afk: parseAfk(raw.afk),
     claimedSessions: Array.isArray(raw.claimedSessions) ? raw.claimedSessions.filter((s) => typeof s === 'string') : [],
     lastHeartbeat: isNum(raw.lastHeartbeat) ? raw.lastHeartbeat : now,
-    stats: {
-      searches: isNum(stats.searches) ? stats.searches : 0,
-      kills: isNum(stats.kills) ? stats.kills : 0,
-      extractions: isNum(stats.extractions) ? stats.extractions : 0,
-    },
-    ferro: parseFerro(raw.ferro),
+    stats,
+    xp: isNum(raw.xp) ? Math.max(0, Math.floor(raw.xp)) : legacyXp(stats, ferro.built.length, ferro.learned.length),
+    ferro,
   };
 }
 

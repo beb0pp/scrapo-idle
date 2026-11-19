@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SPELLS, type SkillNodeId } from '../data/ferromancy';
-import { levelOf, manaRegen, maxMana, useItem, xpForLevel, xpOf } from './mana';
+import { xpAt } from './level';
+import { manaRegen, maxMana, useItem } from './mana';
 import { buildNode, learnNode } from './progression';
 import { parseSave } from './save';
 import { castProblem, castSpell, discover, equipSpell, spellPower, type SpellCooldowns } from './spells';
@@ -19,39 +20,7 @@ function mage(): GameState {
   return s;
 }
 
-describe('character level', () => {
-  it('follows the 60·L·(L−1)/2 curve and caps at 30', () => {
-    expect([1, 2, 3, 4].map(xpForLevel)).toEqual([0, 60, 180, 360]);
-    const s = newGame(T0);
-    expect(levelOf(s)).toEqual({ level: 1, xp: 0, into: 0, need: 60 });
-    s.stats.kills = 5;
-    s.stats.searches = 2;
-    expect(levelOf(s)).toEqual({ level: 1, xp: 58, into: 58, need: 60 });
-    s.stats.searches = 3;
-    expect(levelOf(s)).toEqual({ level: 2, xp: 62, into: 2, need: 120 });
-    s.stats.kills = 1_000_000;
-    expect(levelOf(s)).toMatchObject({ level: 30, need: 0 });
-  });
-
-  it('derives the level of an old save from its stats, with no migration', () => {
-    const v2 = JSON.stringify({
-      version: 2, currency: 0, inventory: {}, equipped: {}, flags: {}, afk: null, claimedSessions: [], lastHeartbeat: T0,
-      stats: { searches: 10, kills: 12, extractions: 2 },
-    });
-    const s = parseSave(v2, T0);
-    expect(s.ferro.manaBonus).toBe(0);
-    expect(xpOf(s)).toBe(12 * 10 + 10 * 4 + 2 * 25);
-    expect(levelOf(s).level).toBe(3);
-    expect(maxMana(s)).toBe(40);
-  });
-
-  it('counts built and learned nodes as XP', () => {
-    const s = newGame(T0);
-    s.ferro.built = ['b_workshop', 'b_alchemy'];
-    s.ferro.learned = ['s_mag_init'];
-    expect(xpOf(s)).toBe(2 * 15 + 10);
-  });
-
+describe('mana save fields', () => {
   it('drops a broken manaBonus from a save', () => {
     const raw = JSON.parse(JSON.stringify({ ...newGame(T0), ferro: { ...newGame(T0).ferro, manaBonus: -3 } }));
     expect(parseSave(JSON.stringify(raw), T0).ferro.manaBonus).toBe(0);
@@ -64,7 +33,7 @@ describe('max mana', () => {
   it('sums base, level, equipment and crystal bonus', () => {
     const s = newGame(T0);
     expect(maxMana(s)).toBe(30);
-    s.stats.kills = 6;
+    s.xp = xpAt(2);
     expect(maxMana(s)).toBe(35);
     s.equipped.head = 'head_scrap_cap';
     s.equipped.accessory = 'accessory_lucky_bolt';
@@ -72,6 +41,14 @@ describe('max mana', () => {
     expect(maxMana(s)).toBe(35 + 5 + 10 + 15);
     s.ferro.manaBonus = 5;
     expect(maxMana(s)).toBe(70);
+  });
+
+  it('stops growing with level after Nv 30', () => {
+    const s = newGame(T0);
+    s.xp = xpAt(30);
+    expect(maxMana(s)).toBe(30 + 5 * 29);
+    s.xp = xpAt(100);
+    expect(maxMana(s)).toBe(30 + 5 * 29);
   });
 
   it('regenerates faster out of combat', () => {
