@@ -2,6 +2,7 @@ import { DOG_PARTS, dogPartTexture } from '../art/dogParts';
 import { DRONE_PARTS, dronePartTexture } from '../art/droneParts';
 import { HERO_GEAR, gearTexture } from '../art/heroGear';
 import Phaser from 'phaser';
+import { buildBuildArt } from '../art/buildArt';
 import { buildFerroArt } from '../art/ferroArt';
 import { buildEnemyArt } from '../art/enemyArt';
 import { buildSprites } from '../art/sprites';
@@ -28,6 +29,7 @@ export class BootScene extends Phaser.Scene {
   create(): void {
     buildSprites(this);
     buildFerroArt(this);
+    buildBuildArt(this);
     buildEnemyArt(this);
     initHud();
     initFerroHud();

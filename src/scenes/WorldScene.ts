@@ -13,6 +13,7 @@ import { findPath, nearestFree, simplify } from '../game/pathfind';
 import * as vfx from '../game/vfx';
 import { RoboDog } from '../game/dog';
 import { FerroController, ferroApi } from '../game/ferroController';
+import { YardDecor } from '../game/yardDecor';
 import { PILE_RESPAWN_MS, session } from '../session';
 import { closePanel, hudFrame, modal, onSkillClick, openPanel, panelOpen, showHud, toast } from '../ui/ui';
 import { showAreaBanner } from '../ui/banner';
@@ -390,6 +391,7 @@ export class WorldScene extends Phaser.Scene {
         this.add.ellipse(c.x + 1, c.y + 7, 24, 5, 0x000000, 0.3).setDepth(c.y - 1);
         this.add.image(c.x, c.y, 'bench').setDepth(c.y);
         this.interactables.push({ x: c.x, y: c.y, r: 26, label: () => 'F —Oficina', act: () => openPanel('workshop') });
+        new YardDecor(this, c.x, c.y);
         break;
       case 'vendor':
         this.add.ellipse(c.x, c.y + 4, 14, 5, 0x000000, 0.35).setDepth(c.y - 1);

@@ -251,3 +251,42 @@ test('g. regressões: drone, mochila, mercado e cooldown no HUD', async ({ page 
   await expect.poll(() => page.locator('#spellbar [data-spell-slot="1"] .cd').evaluate((el) => parseFloat((el as HTMLElement).style.height || '0')), { timeout: 3000 }).toBeGreaterThan(0);
   await expect(page.locator('#spellbar [data-spell-slot="1"]')).toHaveClass(/is-cooling/);
 });
+
+test('h. Colheita em Lote vasculha várias pilhas prontas de uma vez', async ({ page }) => {
+  await seedSave(page, {
+    inventory: { scrap: 5, ...REAGENTS },
+    ferro: {
+      ...MAGE,
+      learned: [...MAGE.learned, 's_ext_eye', 's_ext_hands', 's_ext_magnet', 's_mag_haste', 's_mag_net', 's_mag_harvest'],
+      loadout: ['spell_haste', 'spell_net', 'spell_harvest'],
+    },
+    stats: { kills: 30 },
+    flags: { first_wagon_looted: true },
+  });
+  await enterWorld(page, 'yard');
+  const pair = await page.evaluate(() => {
+    const piles = (window as any).__scrapo.world().piles as { x: number; y: number }[];
+    let best: { a: { x: number; y: number }; b: { x: number; y: number }; d: number } | null = null;
+    for (const a of piles) for (const b of piles) {
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (a !== b && (!best || d < best.d)) best = { a, b, d };
+    }
+    return best;
+  });
+  expect(pair, 'the yard has two piles close enough for one harvest').not.toBeNull();
+  expect(pair!.d).toBeLessThanOrEqual(200);
+  await teleportFeet(page, (pair!.a.x + pair!.b.x) / 2, (pair!.a.y + pair!.b.y) / 2);
+  await expect.poll(() => mana(page)).toBeGreaterThanOrEqual(30);
+
+  const searches0 = await readState<number>(page, 's.stats.searches');
+  await press(page, 'c');
+  expect(await inv(page, 'reagent_lodestone'), 'reforço consumes two lodestone reagents').toBe(3);
+  await expect.poll(() => readState<number>(page, 's.stats.searches'), { timeout: 3000, message: 'every ready pile in range is searched on impact' })
+    .toBeGreaterThanOrEqual(searches0 + 2);
+
+  await setMana(page, 100);
+  await page.evaluate(() => { (window as any).__scrapo.ferro().cds.spell_harvest = 0; });
+  await press(page, 'c');
+  await page.waitForTimeout(150);
+  expect(await inv(page, 'reagent_lodestone'), 'no ready pile nearby: nothing is paid').toBe(3);
+});

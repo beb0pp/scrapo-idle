@@ -8,9 +8,10 @@ export type BuildNodeId =
 export type SkillNodeId =
   | 's_cmb_arm' | 's_cmb_dash' | 's_cmb_fury'
   | 's_ext_eye' | 's_ext_hands' | 's_ext_magnet'
-  | 's_mag_init' | 's_mag_ward' | 's_mag_lode' | 's_mag_channel';
+  | 's_mag_init' | 's_mag_ward' | 's_mag_lode' | 's_mag_channel'
+  | 's_mag_haste' | 's_mag_net' | 's_mag_harvest';
 export type NodeId = BuildNodeId | SkillNodeId;
-export type SpellId = 'spell_ember' | 'spell_ward' | 'spell_lodestone';
+export type SpellId = 'spell_ember' | 'spell_ward' | 'spell_lodestone' | 'spell_haste' | 'spell_net' | 'spell_harvest';
 export type TransmuteId = 't_ember' | 't_ward' | 't_lodestone' | 't_flask';
 export type DiscoveryId = 'ether_vein' | 'automaton';
 export type AllyId = 'cobalto';
@@ -130,9 +131,21 @@ export const SKILL_NODES: Record<SkillNodeId, NodeDef<SkillNodeId>> = {
     id: 's_mag_channel', name: 'Canalização', branch: 'magia', col: 2, row: 2, requires: ['s_mag_ward'],
     cost: { points: 2, items: { ether_shard: 1 } }, effect: 'Recarga de todos os feitiços 20% menor.', mods: { spellCooldownMul: 0.8 },
   },
+  s_mag_haste: {
+    id: 's_mag_haste', name: 'Pressa Rúnica', branch: 'magia', col: 3, row: 2, requires: ['s_mag_lode'],
+    cost: { points: 1 }, effect: 'Aprende a Pressa Rúnica (auxílio).', unlocksSpell: 'spell_haste',
+  },
+  s_mag_net: {
+    id: 's_mag_net', name: 'Rede Magnética', branch: 'magia', col: 1, row: 3, requires: ['s_ext_magnet', 's_mag_lode'],
+    cost: { points: 1 }, effect: 'Aprende a Rede Magnética (auxílio).', unlocksSpell: 'spell_net',
+  },
+  s_mag_harvest: {
+    id: 's_mag_harvest', name: 'Colheita em Lote', branch: 'magia', col: 3, row: 3, requires: ['s_mag_haste'],
+    cost: { points: 2, items: { ether_shard: 2 } }, effect: 'Aprende a Colheita em Lote (auxílio).', unlocksSpell: 'spell_harvest',
+  },
 };
 
-export type SpellSchool = 'ataque' | 'defesa' | 'extracao';
+export type SpellSchool = 'ataque' | 'defesa' | 'extracao' | 'auxilio';
 export type SpellTarget = 'enemy' | 'self' | 'area';
 
 export interface SpellDef {
@@ -147,7 +160,7 @@ export interface SpellDef {
   target: SpellTarget;
   /** Max distance to the target (enemy) or radius of the area. */
   range: number;
-  /** Damage (ataque), shield points (defesa) or pull radius bonus (extracao). */
+  /** Damage (ataque), shield points (defesa), pull radius bonus (extracao) or buff strength / pile count (auxilio). */
   power: number;
   durationMs?: number;
   effect: string;
@@ -169,6 +182,21 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     id: 'spell_lodestone', name: 'Chamado Imantado', school: 'extracao', mana: 10, cost: { reagent_lodestone: 1 }, cooldownMs: 12000,
     target: 'area', range: 170, power: 1, color: 0xb48ae6,
     effect: 'Puxa todos os achados num raio de 170 px e a próxima pilha vasculhada rende um achado extra.',
+  },
+  spell_haste: {
+    id: 'spell_haste', name: 'Pressa Rúnica', school: 'auxilio', mana: 15, cost: { reagent_ember: 1 }, cooldownMs: 40000,
+    target: 'self', range: 0, power: 50, durationMs: 15000, color: 0xe0b33a,
+    effect: 'Vasculha pilhas e veios 50% mais rápido por 15 s.',
+  },
+  spell_net: {
+    id: 'spell_net', name: 'Rede Magnética', school: 'auxilio', mana: 20, cost: { reagent_lodestone: 1 }, cooldownMs: 60000,
+    target: 'self', range: 0, power: 120, durationMs: 20000, color: 0x9a6ae0,
+    effect: 'Atrai achados do chão de muito mais longe (+120 px) por 20 s.',
+  },
+  spell_harvest: {
+    id: 'spell_harvest', name: 'Colheita em Lote', school: 'auxilio', mana: 30, cost: { reagent_lodestone: 2 }, cooldownMs: 75000,
+    target: 'area', range: 120, power: 4, color: 0x9fd86a,
+    effect: 'Vasculha na hora até 4 pilhas prontas num raio de 120 px.',
   },
 };
 

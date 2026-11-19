@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { activeSynergies, costText, ferroMods } from '../core/progression';
 import { levelOf, manaRegen, maxMana, OUT_OF_COMBAT_MS, useItem } from '../core/mana';
-import { castProblem, castSpell, discover, recruit, recruitProblem, slotOf, spellCooldownMs, spellPower, EMPOWER_MUL, type ManaHolder, type SpellCooldowns } from '../core/spells';
+import { buffedMods, castProblem, castSpell, discover, recruit, recruitProblem, slotOf, spellCooldownMs, spellPower, EMPOWER_MUL, type ManaHolder, type SpellBuffs, type SpellCooldowns } from '../core/spells';
 import { addItems, hasItems } from '../core/state';
 import { ALLIES, SPELLS, type FerroMods, type SpellId } from '../data/ferromancy';
 import { ITEMS, RARITY, rarityOf, type ItemBag, type ItemId } from '../data/items';
@@ -11,7 +11,7 @@ import { modal, toast } from '../ui/ui';
 import { Cobalto, type AllyTarget } from './ally';
 import type { Crane, Enemy } from './enemies';
 import { reachableCells, spotNear } from './placement';
-import { discoveryBurst, playEmber, playLodestone, playWard, wardBreak, wardHit, type Pt } from './spellfx';
+import { discoveryBurst, playEmber, playHarvest, playHaste, playLodestone, playNet, playWard, spellAura, wardBreak, wardHit, type Pt, type WardShield } from './spellfx';
 
 // Ferromancy runtime in the world: spells (Z X C), Auto casting, Ether veins, the sleeping automaton and Cobalto.
 
@@ -36,6 +36,8 @@ export interface FerroApi {
   pickups(): Pt[];
   attractPickups(x: number, y: number, r: number): void;
   addInteractable(it: FerroInteractable): void;
+  /** Piles ready to search; `search()` runs the scene's normal finished search. */
+  readyPiles(): (Pt & { search(): void })[];
   /** Ready jobs Auto may take (piles, junk, veins). */
   jobs(): Pt[];
   /** Starts the scene's timed search bar; false while another one runs. */
@@ -47,6 +49,8 @@ export interface FerroApi {
   sinceHurt(): number;
 }
 
+interface HostPile { x: number; y: number }
+
 /** WorldScene members the adapter reads. Kept in one place so an upstream rename breaks here only. */
 interface FerroHost extends Phaser.Scene {
   mapId: string;
@@ -57,6 +61,9 @@ interface FerroHost extends Phaser.Scene {
   enemies: Enemy[];
   crane: Crane | null;
   pickups: { sprite: Phaser.GameObjects.Image }[];
+  piles: HostPile[];
+  pileReady(p: HostPile): boolean;
+  finishSearch(p: HostPile): void;
   interactables: FerroInteractable[];
   searching: { until: number; total: number; finish: () => void } | null;
   lastManual: number;
@@ -92,6 +99,7 @@ export function ferroApi(scene: Phaser.Scene): FerroApi {
     pickups: () => h.pickups.map((p) => ({ x: p.sprite.x, y: p.sprite.y })),
     attractPickups: (x, y, r) => h.attractPickups(x, y, r),
     addInteractable: (it) => h.interactables.push(it),
+    readyPiles: () => h.piles.filter((p) => h.pileReady(p)).map((p) => ({ x: p.x, y: p.y, search: () => { if (h.pileReady(p)) h.finishSearch(p); } })),
     jobs: () => h.interactables.filter((it) => it.auto && it.label()),
     startTimedAction: (ms, finish) => {
       if (h.searching) return false;
@@ -126,6 +134,11 @@ const dist = (a: Pt, b: Pt) => Phaser.Math.Distance.Between(a.x, a.y, b.x, b.y);
 const sharedCooldowns: SpellCooldowns = {};
 /** Runtime mana (never saved): survives map changes like the cooldowns, starts full. */
 const sharedMana: ManaHolder = { value: -1 };
+/** Auxílio buffs survive map changes too (wall clock). */
+const sharedBuffs: SpellBuffs = {};
+const HASTE_JOB_RANGE = 60;
+const NET_LOOT_RANGE = 200;
+const AUTO_MIN_TARGETS = 2;
 
 function fillManaOnce(): void {
   if (sharedMana.value < 0) sharedMana.value = maxMana(session.state);
@@ -149,7 +162,7 @@ export class FerroController {
   private readonly keys: Record<'Z' | 'X' | 'C', Phaser.Input.Keyboard.Key>;
   private readonly veins: Vein[] = [];
   private sleeper: Phaser.GameObjects.Sprite | null = null;
-  private bubble: Phaser.GameObjects.Arc | null = null;
+  private bubble: WardShield | null = null;
   private shieldUntil = 0;
   private cachedMods: FerroMods;
   private autoAt = 0;
@@ -182,10 +195,11 @@ export class FerroController {
     });
     this.placeDiscoveries();
     this.syncParty();
+    this.resumeAuras();
   }
 
   get mods(): FerroMods {
-    return this.cachedMods;
+    return buffedMods(this.cachedMods, sharedBuffs, Date.now());
   }
 
   /** Ferrugem only fights when it is not the Coletor (back slot). */
@@ -238,6 +252,10 @@ export class FerroController {
       if (!auto) toast('Nenhum alvo ao alcance.', 'warn');
       return false;
     }
+    if (id === 'spell_harvest' && !this.harvestPiles().length) {
+      if (!auto) toast('Nenhuma pilha pronta por perto.', 'warn');
+      return false;
+    }
     const res = castSpell(session.state, this.cds, id, Date.now(), sharedMana);
     if (!res.ok) {
       if (!auto) toast(res.msg, 'warn');
@@ -280,8 +298,19 @@ export class FerroController {
       return this.api.enemies().some((e) => e.alive && (dist(hero, e) < 80 || (e.windingUp && dist(hero, e) <= e.radius + 8)));
     }
     if (id === 'spell_ember') return this.emberTarget(true) !== null;
+    if (id === 'spell_haste') return !buffActive('haste') && this.api.jobs().some((j) => dist(hero, j) < HASTE_JOB_RANGE);
+    if (id === 'spell_net') return !buffActive('net') && this.api.pickups().filter((p) => dist(hero, p) < NET_LOOT_RANGE).length >= AUTO_MIN_TARGETS;
+    if (id === 'spell_harvest') return this.harvestPiles().length >= AUTO_MIN_TARGETS;
     const loot = this.api.pickups().filter((p) => dist(hero, p) < SPELLS.spell_lodestone.range).length;
     return loot >= 3 || (!this.searchBonus && this.api.jobs().some((j) => dist(hero, j) < 40));
+  }
+
+  /** Ready piles inside the harvest radius, nearest first. */
+  private harvestPiles(): (Pt & { search(): void })[] {
+    const hero = this.api.hero();
+    return this.api.readyPiles()
+      .filter((p) => dist(hero, p) <= SPELLS.spell_harvest.range)
+      .sort((a, b) => dist(hero, a) - dist(hero, b));
   }
 
   private emberTarget(auto: boolean): AllyTarget | null {
@@ -333,6 +362,29 @@ export class FerroController {
         this.api.attractPickups(at.x, at.y, radius);
         this.searchBonus = true;
       });
+    } else if (id === 'spell_haste' || id === 'spell_net') {
+      const duration = SPELLS[id].durationMs ?? 0;
+      const key = id === 'spell_haste' ? 'haste' : 'net';
+      const play = id === 'spell_haste' ? playHaste : playNet;
+      play(scene, caster, () => this.api.hero(), duration, () => {
+        sharedBuffs[key] = { until: Date.now() + duration, power };
+      });
+      toast(`${SPELLS[id].name}: ${Math.round(duration / 1000)} s.`, 'loot');
+    } else if (id === 'spell_harvest') {
+      const piles = this.harvestPiles().slice(0, power);
+      playHarvest(scene, caster, hero, SPELLS.spell_harvest.range, piles, () => {
+        for (const p of piles) p.search();
+      });
+      toast(`${SPELLS.spell_harvest.name}: ${piles.length} ${piles.length === 1 ? 'pilha' : 'pilhas'}.`, 'loot');
+    }
+  }
+
+  /** A buff cast on another map keeps its aura here for the time left. */
+  private resumeAuras(): void {
+    const now = Date.now();
+    for (const [key, id] of [['haste', 'spell_haste'], ['net', 'spell_net']] as const) {
+      const left = (sharedBuffs[key]?.until ?? 0) - now;
+      if (left > 0) spellAura(this.scene, id, () => this.api.hero(), left);
     }
   }
 
@@ -475,4 +527,8 @@ export class FerroController {
 
 function sameSpot(a: Pt, b: Pt): boolean {
   return Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
+}
+
+function buffActive(key: keyof SpellBuffs): boolean {
+  return (sharedBuffs[key]?.until ?? 0) > Date.now();
 }

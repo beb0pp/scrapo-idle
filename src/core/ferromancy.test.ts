@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { BUILD_NODES, SKILL_NODES, type SkillNodeId } from '../data/ferromancy';
+import { BUILD_NODES, NO_MODS, SKILL_NODES, type SkillNodeId } from '../data/ferromancy';
 import { droneCapacity, playerStats } from './derived';
 import { activeSynergies, buildNode, ferroMods, graphErrors, learnNode, nodeStatus, skillPoints, unlockedSpells } from './progression';
 import { parseSave } from './save';
-import { castProblem, castSpell, discover, equipSpell, recruit, setFormation, spellCooldownMs, spellPower, transmute, type SpellCooldowns } from './spells';
+import { buffedMods, castProblem, castSpell, discover, equipSpell, recruit, setFormation, spellCooldownMs, spellPower, transmute, type SpellCooldowns } from './spells';
 import { addItems, countOf, newGame, type GameState } from './state';
 
 const T0 = 1_700_000_000_000;
@@ -99,7 +99,7 @@ describe('trees', () => {
     }
     expect(s.ferro.built.length).toBe(Object.keys(BUILD_NODES).length);
     expect(s.ferro.learned.length).toBe(Object.keys(SKILL_NODES).length);
-    expect(unlockedSpells(s).sort()).toEqual(['spell_ember', 'spell_lodestone', 'spell_ward']);
+    expect(unlockedSpells(s).sort()).toEqual(['spell_ember', 'spell_harvest', 'spell_haste', 'spell_lodestone', 'spell_net', 'spell_ward']);
   });
 });
 
@@ -162,6 +162,55 @@ describe('alchemy and spells', () => {
     learnNode(s, 's_cmb_dash');
     learnNode(s, 's_cmb_fury');
     expect(spellPower(s, 'spell_ember')).toBe(30);
+  });
+});
+
+describe('auxílio spells', () => {
+  it('learning the three auxílio nodes unlocks their spells', () => {
+    const s = mage();
+    for (const id of ['s_ext_eye', 's_ext_hands', 's_ext_magnet'] as SkillNodeId[]) expect(learnNode(s, id).ok).toBe(true);
+    expect(unlockedSpells(s)).not.toContain('spell_haste');
+    for (const id of ['s_mag_haste', 's_mag_net', 's_mag_harvest'] as SkillNodeId[]) expect(learnNode(s, id).ok).toBe(true);
+    expect(unlockedSpells(s)).toEqual(expect.arrayContaining(['spell_haste', 'spell_net', 'spell_harvest']));
+  });
+
+  it('harvest needs haste first and costs Ether', () => {
+    const s = mage();
+    expect(learnNode(s, 's_mag_harvest').ok).toBe(false);
+    expect(learnNode(s, 's_mag_haste').ok).toBe(true);
+    const shards = countOf(s, 'ether_shard');
+    expect(learnNode(s, 's_mag_harvest').ok).toBe(true);
+    expect(countOf(s, 'ether_shard')).toBe(shards - 2);
+  });
+
+  it('active haste and net buff search time and pickup radius', () => {
+    const mods = { ...NO_MODS, searchTimeMul: 0.7, pickupRadius: 40 };
+    const out = buffedMods(mods, { haste: { until: T0 + 1, power: 50 }, net: { until: T0 + 1, power: 120 } }, T0);
+    expect(out.searchTimeMul).toBeCloseTo(0.35);
+    expect(out.pickupRadius).toBe(160);
+  });
+
+  it('applies only the buff that is still active', () => {
+    const buffs = { haste: { until: T0 + 1, power: 50 }, net: { until: T0, power: 120 } };
+    const out = buffedMods(NO_MODS, buffs, T0);
+    expect(out.searchTimeMul).toBeCloseTo(0.5);
+    expect(out.pickupRadius).toBe(0);
+  });
+
+  it('ignores expired buffs', () => {
+    const out = buffedMods(NO_MODS, { haste: { until: T0 - 1, power: 50 }, net: { until: T0 - 1, power: 120 } }, T0);
+    expect(out).toEqual(NO_MODS);
+  });
+
+  it('clamps haste at 20% of the search time', () => {
+    expect(buffedMods(NO_MODS, { haste: { until: T0 + 1, power: 150 } }, T0).searchTimeMul).toBeCloseTo(0.2);
+  });
+
+  it('never mutates the base mods', () => {
+    const mods = { ...NO_MODS };
+    const out = buffedMods(mods, { haste: { until: T0 + 1, power: 50 }, net: { until: T0 + 1, power: 120 } }, T0);
+    expect(mods).toEqual(NO_MODS);
+    expect(out).not.toBe(mods);
   });
 });
 

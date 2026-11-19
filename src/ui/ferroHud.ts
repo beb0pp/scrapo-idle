@@ -130,7 +130,7 @@ function renderSpellbar(): void {
     const have = countOf(state, reagent);
     const boosted = canEmpower(state, id);
     const url = spellIconUrls[id];
-    const art = url ? `<img class="spell-ico" src="${url}" alt="">` : '<span class="spell-ico" aria-hidden="true">✦</span>';
+    const art = url ? `<img class="spell-ico sp-${id}" src="${url}" alt="">` : '<span class="spell-ico" aria-hidden="true">✦</span>';
     const boost = boosted ? `<em class="spell-boost" title="Reforçado: +50% (${have}× ${esc(ITEMS[reagent].name)})">${icon(reagent, 'spell-reagent')}✦</em>` : '';
     const label = `${esc(spell.name)}, atalho ${key}, ${spell.mana} de mana${boosted ? `, reforçado (${have} reagentes)` : ''}`;
     return `<button class="spell-slot${boosted ? ' is-boosted' : ''}" data-spell-slot="${slot}" data-spell-id="${id}" title="${esc(spell.name)} (${key})" aria-label="${label}">`

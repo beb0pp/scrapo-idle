@@ -19,7 +19,7 @@ export type FerroTab = 'build' | 'skill' | 'grimoire' | 'party';
 
 const TABS: Array<[FerroTab, string]> = [['build', 'Construção'], ['skill', 'Habilidades'], ['grimoire', 'Grimório'], ['party', 'Equipe']];
 const REAGENTS: ItemId[] = ['ether_shard', 'reagent_ember', 'reagent_ward', 'reagent_lodestone', 'mana_flask', 'ether_crystal'];
-const SCHOOL_LABEL: Record<SpellSchool, string> = { ataque: 'Ataque', defesa: 'Defesa', extracao: 'Extração' };
+const SCHOOL_LABEL: Record<SpellSchool, string> = { ataque: 'Ataque', defesa: 'Defesa', extracao: 'Extração', auxilio: 'Auxílio' };
 const TARGET_LABEL: Record<SpellTarget, string> = { enemy: 'Alvo', self: 'Si mesmo', area: 'Área' };
 const TARGET_GLYPH: Record<SpellTarget, string> = { enemy: '◎', self: '⛨', area: '◌' };
 const SLOT_LABEL: Record<FormationSlot, string> = { front: 'Frente', back: 'Retaguarda' };
@@ -239,7 +239,7 @@ function detailPane(state: GameState, node: NodeDef<NodeId>, kind: TreeKind): st
 
 function spellIcon(id: SpellId, cls = 'fe-spell-ico'): string {
   const url = spellIconUrls[id];
-  return url ? `<img class="${cls}" src="${url}" alt="">` : `<span class="${cls} is-blank" aria-hidden="true">✦</span>`;
+  return url ? `<img class="${cls} sp-${id}" src="${url}" alt="">` : `<span class="${cls} is-blank" aria-hidden="true">✦</span>`;
 }
 
 function unlocker(id: SpellId): NodeDef<SkillNodeId> | undefined {
