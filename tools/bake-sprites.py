@@ -96,8 +96,9 @@ def side_view(base: Image.Image) -> Image.Image:
     return out
 
 
-def hero_frames() -> list[Image.Image]:
-    base = Image.open(SRC / 'hero_base.png').convert('RGBA')
+def hero_frames(base: Image.Image | None = None) -> list[Image.Image]:
+    """25 frames of the hero; with an overlay image (see hero_gear.py) the same poses for that item."""
+    base = base if base is not None else Image.open(SRC / 'hero_base.png').convert('RGBA')
     front = build_hero(base)
     back = build_hero(back_view(base), wrench_side='left')
     side = build_hero(side_view(base))
@@ -187,4 +188,13 @@ if __name__ == '__main__':
     sheet(hero).save(OUT / 'hero.png')
     sheet(dog_frames()).save(OUT / 'dog.png')
     hero[0].save(OUT / 'hero-portrait.png')
+    # one aligned overlay sheet (and portrait) per visible piece of gear
+    from hero_gear import GEAR
+    base = Image.open(SRC / 'hero_base.png').convert('RGBA')
+    (OUT / 'gear').mkdir(exist_ok=True)
+    for item, paint in GEAR.items():
+        frames = hero_frames(paint(base))
+        sheet(frames).save(OUT / 'gear' / f'{item}.png')
+        frames[0].save(OUT / 'gear' / f'{item}-portrait.png')
+    print('gear', len(GEAR), 'overlays -> public/sprites/gear/')
     print('hero', len(hero), 'frames', HERO_FRAME, '-> public/sprites/hero.png')
