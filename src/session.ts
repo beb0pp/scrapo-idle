@@ -20,6 +20,8 @@ export class Session {
   readonly searchedPiles = new Map<string, number>();
   /** Runtime only: hero plays by himself (fights, salvages, collects). */
   autoMode = false;
+  /** Runtime counters for auto-mode QA (not saved). */
+  readonly autoLog = { deaths: 0, dodges: 0, unstuck: 0, retreats: 0, skills: { pulse: 0, arc: 0, dash: 0, overdrive: 0 } };
   private readonly autoListeners = new Set<(on: boolean) => void>();
 
   onAutoChange(fn: (on: boolean) => void): void {

@@ -32,11 +32,18 @@ Não precisa de servidor nem de banco. O progresso fica no `localStorage` do nav
 | Clique esquerdo num inimigo | persegue e ataca com a chave inglesa |
 | Clique esquerdo em pilha, destroço, oficina, comerciante, terminal ou placa | vai até lá e usa (desmontar anima a chave batendo) |
 | Clique direito | Investida Hidráulica na direção do cursor |
-| `Q` / `W` / `E` / `R` | Pulso Magnético / Arco Elétrico / Investida Hidráulica / Sobrecarga do drone |
+| `Q` / `W` / `E` / `R` | Pulso Magnético / Arco Elétrico / Investida Hidráulica / Sobrecarga (o módulo do drone dispara com força total; fica apagado até montar o drone) |
+| `T` ou botão **Auto** | liga/desliga o modo automático |
 | `1`–`5` | troca a ferramenta equipada (hotbar) |
 | `F` | interagir com o que está perto · `Espaço` golpe da chave |
 | `I` | Mochila (janela à direita) · `Esc` fecha painéis |
 | Roda do mouse | zoom (passos inteiros, fica salvo) · setas também movem |
+
+## Modo automático e Ferrugem
+
+- **Auto (`T`)**: o sucateiro desmonta a sucata alcançável mais próxima, recolhe o que cai e enfrenta inimigos por perto. Usa as mesmas habilidades e recargas do controle manual (Pulso com 2+ inimigos, Arco no alvo, Sobrecarga com drone), esquiva com a Investida quando um inimigo carrega um golpe (círculo vermelho) e recua com menos de 35% de vida. A vida regenera devagar após 4 s sem dano. Ainda dá para morrer.
+- Qualquer clique ou tecla assume o controle na hora; o Auto volta sozinho 3 s depois da última ação manual.
+- **Ferrugem**, o cão-robô, acompanha você desde o início: morde inimigos perto do herói e busca sucata caída para a mochila.
 
 ## Roteiro rápido de teste (≈10 min)
 
@@ -47,7 +54,7 @@ Não precisa de servidor nem de banco. O progresso fica no `localStorage` do nav
 5. Clique no **terminal** do centro → **Iniciar** na Borda do Pátio Ferroviário. Veja o drone trabalhar, troque de aba por um minuto e volte: o progresso segue o relógio.
 6. Recarregue a página no meio da extração: os ciclos concluídos aparecem para **Recolher**. Recolha e recarregue de novo: não dá para recolher outra vez.
 7. Clique na **comerciante** (Dona Rebite) e venda o excedente.
-8. No nordeste do ferro-velho, desça pela escotilha até a **Estação de Triagem Soterrada**. O **Guindaste de Arrasto** pisca uma linha amarela antes de puxar: use a **Investida** (`3` ou clique direito) para romper o ímã.
+8. No nordeste do ferro-velho, desça pela escotilha até a **Estação de Triagem Soterrada**. O **Guindaste de Arrasto** pisca uma linha amarela antes de puxar: use a **Investida** (`E` ou clique direito) para romper o ímã.
 9. Pegue a **Bobina do Guindaste**. Na oficina, monte o **Módulo Magnético** e instale no drone. Na próxima saída o drone emite pulsos que puxam e atordoam robôs leves.
 
 ## Documentação

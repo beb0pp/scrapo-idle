@@ -1,4 +1,5 @@
 import { ITEMS } from '../data/items';
+import { skillIconUrls, type SkillIconId } from '../art/skillIcons';
 import { computeProgress } from '../core/afk';
 import { AFK_AREAS } from '../data/areas';
 import { session } from '../session';
@@ -34,11 +35,11 @@ export function initHud(): void {
     </aside>
     <div id="map-view" hidden><div id="map-view-card"><div id="map-view-head"><h2>Mapa regional</h2><button id="map-close">Esc ✕</button></div><canvas id="map-view-canvas" width="720" height="480"></canvas><div class="map-legend"><span>Entrada</span><span>Extração</span><span>NPC</span><span>Chefe</span><span>Pilha</span></div></div></div>
     <div class="hud-bottom">
-      <button class="skill inv" data-open="inventory"><b>I</b><span>Mochila</span></button>
-      <button class="skill auto-btn" id="auto-btn" title="Modo automático: luta, desmonta sucata e recolhe sozinho (T)"><b>T</b><span>Auto</span></button>
-      ${['Pulso', 'Arco', 'Investida', 'Drone'].map((name, index) => `<button class="skill" data-skill="${index}"><b>${'QWER'[index]}</b><span>${name}</span><i class="cd" id="cd${index}"></i></button>`).join('')}
+      ${skillButton('Mochila', 'I', 'backpack', 'data-open="inventory"', 'inv')}
+      ${skillButton('Auto', 'T', 'auto', 'id="auto-btn" title="Modo automático: luta, desmonta sucata e recolhe sozinho (T)"', 'auto-btn')}
+      ${(['Pulso', 'Arco', 'Investida', 'Sobrecarga'] as const).map((name, index) => skillButton(name, 'QWER'[index], (['pulse', 'arc', 'dash', 'overload'] as const)[index], `data-skill="${index}" title="${['Pulso Magnético: puxa e atordoa inimigos próximos', 'Arco Elétrico: raio em cadeia nos alvos', 'Investida Hidráulica: avanço invulnerável que rompe ímãs e interrompe golpes', 'Sobrecarga do drone: o módulo do drone dispara com força total (precisa do drone montado)'][index]}"`, '', `<i class="cd" id="cd${index}"></i>`)).join('')}
       <div id="tool-hotbar" class="tool-hotbar"></div>
-      <button class="skill" data-open="vendor"><b>$</b><span>Mercado</span></button>
+      ${skillButton('Mercado', '$', 'market', 'data-open="vendor"')}
     </div>
     <div id="drone-badge" class="drone-badge"></div>`;
   $('hud').addEventListener('click', handleHudClick);
@@ -46,6 +47,10 @@ export function initHud(): void {
   session.onChange(refreshHud);
   session.onAutoChange((on) => $('auto-btn').classList.toggle('is-on', on));
   refreshHud();
+}
+
+function skillButton(name: string, key: string, icon: SkillIconId, attributes: string, extraClass = '', overlay = ''): string {
+  return `<button class="skill ${extraClass}" ${attributes}><b class="skill-key">${key}</b><img class="skill-icon" src="${skillIconUrls[icon]}" alt="" aria-hidden="true"><span>${name}</span>${overlay}</button>`;
 }
 
 export function showHud(visible: boolean): void {
@@ -109,6 +114,7 @@ function renderRecentFinds(): void {
 export function hudFrame(frame: HudFrame): void {
   $('area').textContent = frame.area;
   frame.cooldowns.forEach((value, index) => { const overlay = $<HTMLElement>(`cd${index}`); overlay.style.height = `${value * 100}%`; });
+  document.querySelector('.skill[data-skill="3"]')?.classList.toggle('is-locked', !session.state.equipped.drone);
   const prompt = $('prompt');
   prompt.hidden = !frame.prompt;
   if (frame.prompt) prompt.textContent = frame.prompt;
@@ -132,7 +138,7 @@ export function objective(s: typeof session.state): string {
 
 function renderToolHotbar(): void {
   const tools = (['tool_wrench_old', 'tool_wrench_reinforced', 'tool_hydraulic_pry'] as const).filter((id) => session.state.equipped.tool === id || (session.state.inventory[id] ?? 0) > 0);
-  const slots = Array.from({ length: 5 }, (_, index) => {
+  const slots = Array.from({ length: 3 }, (_, index) => {
     const id = tools[index];
     const image = id ? icon(id) : '';
     const active = id && session.state.equipped.tool === id ? 'active' : '';
